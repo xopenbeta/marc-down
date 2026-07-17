@@ -15,7 +15,26 @@ export interface OpenPathResult {
 }
 
 export async function openPathDialog(): Promise<OpenPathResult | null> {
-  return await invoke<OpenPathResult | null>("open_path_dialog");
+  const result = await invoke<OpenPathResult | null>("open_path_dialog");
+  if (result) return result;
+
+  // On non-macOS, Rust open_path_dialog currently returns null.
+  // Fallback to dialog plugin so the shared "Open" button still works.
+  const folder = await open({ directory: true, multiple: false });
+  if (typeof folder === "string") {
+    return { path: folder, is_directory: true };
+  }
+
+  const file = await open({
+    directory: false,
+    multiple: false,
+    filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
+  });
+  if (typeof file === "string") {
+    return { path: file, is_directory: false };
+  }
+
+  return null;
 }
 
 export async function openWorkspaceDialog(): Promise<string | null> {
