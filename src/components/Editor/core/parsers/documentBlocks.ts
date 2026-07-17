@@ -48,7 +48,7 @@ export function parseDocumentToBlocks(doc: Document): Block[] {
     doc.getParagraph(k).block = null;
   }
 
-  const tree = markdownToMdast(text, { features: { gfm: true } }) as MdastRoot;
+  const tree = markdownToMdast(text, { features: { gfm: true, math: true } }) as MdastRoot;
   const blocks: Block[] = [];
 
   for (const node of tree.children ?? []) {

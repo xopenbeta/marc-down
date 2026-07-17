@@ -30,6 +30,13 @@ describe("parseDocumentToBlocks (satteri)", () => {
     expect(endLine).toBe("$$");
   });
 
+  it("extracts block math between paragraphs", () => {
+    const { blocks } = parse(["before", "$$", "a+b", "$$", "after"].join("\n"));
+
+    expect(blocks.map(b => b.type)).toEqual(["paragraph", "math", "paragraph"]);
+    expect(blocks[1].latex).toBe("a+b");
+  });
+
   it("parses mermaid fenced code into mermaid block", () => {
     const { blocks } = parse(["```mermaid", "graph TD;A-->B", "```"].join("\n"));
 
