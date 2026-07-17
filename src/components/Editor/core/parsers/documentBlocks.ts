@@ -1,23 +1,27 @@
-import type { Block, Paragraph } from "./types";
+import { markdownToMdast } from "satteri";
+import type { Block } from "./types";
 import { hashBlockId } from "../cache";
 import { Document } from "./types";
 
-const codeFenceRe = /^(`{3,})(\S*)\s*$/;
-const mathFenceRe = /^\$\$\s*$/;
-const htmlOpenTagRe = /^<([a-zA-Z][a-zA-Z0-9]*)([\s>])/;
-const tableSeparatorRe = /^\s*\|?(\s*:?-+:?\s*\|)+\s*:?-+:?\s*\|?\s*$/;
-const imageRe = /^!\[([^\]]*)\]\(([^)]+)\)\s*$/;
-const headingRe = /^(#{1,6})\s/;
-const hrRe = /^(?:---+|___+|\*\*\*+)\s*$/;
-const blockquoteRe = /^>\s?/;
+type MdastPosition = {
+  start?: { offset?: number };
+  end?: { offset?: number };
+};
 
-function htmlCloseTagRe(tag: string) {
-  return new RegExp(`</${tag}\\s*>`);
-}
+type MdastNode = {
+  type: string;
+  lang?: string | null;
+  depth?: number;
+  value?: string;
+  alt?: string;
+  url?: string;
+  children?: MdastNode[];
+  position?: MdastPosition;
+};
 
-function htmlOpenCountRe(tag: string) {
-  return new RegExp(`<${tag}[\\s>]`, "g");
-}
+type MdastRoot = {
+  children?: MdastNode[];
+};
 
 /** 设置 block 范围内所有段落的 block 反向引用 */
 function assignBlockToParagraphs(doc: Document, block: Block): void {
@@ -31,341 +35,241 @@ function assignBlockToParagraphs(doc: Document, block: Block): void {
 export function parseDocumentToBlocks(doc: Document): Block[] {
   const t0 = performance.now();
   const text = doc.content;
-  const oldBlocks = doc.blocks;
-  const dirtyFrom = doc.dirtyFromIndex;
   const toLine = doc.paraphsLength - 1;
 
-  // 无脏区域时直接返回旧 blocks
-  if (dirtyFrom > toLine && oldBlocks.length > 0) {
-    return oldBlocks;
+  if (toLine < 0) {
+    doc.blocks = [];
+    doc.dirtyFromIndex = doc.paraphsLength;
+    return [];
   }
 
-  // ─── 增量解析：复用前缀，从 dirty block 开始重解析，匹配后缀时提前终止 ───
-
-  // 1. 找到包含 dirtyFrom 的第一个旧 block 的索引
-  let firstDirtyBlockIdx = 0;
-  if (oldBlocks.length > 0 && dirtyFrom > 0) {
-    for (let b = 0; b < oldBlocks.length; b++) {
-      const blockEndLine = doc.getParagraphAtPos(oldBlocks[b].documentPosTo).documentOffsetIndex;
-      if (blockEndLine >= dirtyFrom) {
-        firstDirtyBlockIdx = b;
-        break;
-      }
-      if (b === oldBlocks.length - 1) {
-        firstDirtyBlockIdx = oldBlocks.length;
-      }
-    }
-  }
-
-  // 2. prefix：dirty block 之前的 block 直接复用
-  const prefix = oldBlocks.slice(0, firstDirtyBlockIdx);
-
-  // 3. 确定重解析起始行
-  let startLine = 0;
-  if (firstDirtyBlockIdx > 0) {
-    const lastPrefixBlock = prefix[prefix.length - 1];
-    startLine = doc.getParagraphAtPos(lastPrefixBlock.documentPosTo).documentOffsetIndex + 1;
-  }
-
-  // 4. 从 startLine 开始解析新 blocks
-  const newSuffix: Block[] = [];
-  let i = startLine;
-
-  // 清除重解析范围内的旧 block 引用
-  for (let k = startLine; k <= toLine; k++) {
+  // 全量清理 paragraph.block，后续再按新 blocks 回填。
+  for (let k = 0; k <= toLine; k++) {
     doc.getParagraph(k).block = null;
   }
 
-  while (i <= toLine) {
-    const ln = doc.getParagraph(i);
+  const tree = markdownToMdast(text, { features: { gfm: true } }) as MdastRoot;
+  const blocks: Block[] = [];
 
-    if (tryCodeFence(doc, text, i, ln, newSuffix)) {
-      i = lastBlockEnd(newSuffix, doc) + 1;
-    } else if (tryMathFence(doc, text, i, ln, newSuffix)) {
-      i = lastBlockEnd(newSuffix, doc) + 1;
-    } else if (tryHtmlBlock(doc, text, i, ln, newSuffix)) {
-      i = lastBlockEnd(newSuffix, doc) + 1;
-    } else if (tryTable(doc, text, i, ln, newSuffix)) {
-      i = lastBlockEnd(newSuffix, doc) + 1;
-    } else if (tryImage(ln, newSuffix)) {
-      i++;
-    } else if (tryHeading(ln, newSuffix)) {
-      i++;
-    } else if (tryHr(ln, newSuffix)) {
-      i++;
-    } else if (tryBlockquote(doc, text, i, toLine, newSuffix)) {
-      i = lastBlockEnd(newSuffix, doc) + 1;
-    } else if (ln.text.trim() === "") {
-      newSuffix.push({ type: "gap", id: hashBlockId(ln.text), documentPosFrom: ln.documentPosFrom, documentPosTo: ln.documentPosTo });
-      i++;
-    } else {
-      i = consumeParagraph(doc, text, i, toLine, newSuffix);
+  for (const node of tree.children ?? []) {
+    const block = mapTopLevelNodeToBlock(node, doc, text);
+    if (block) {
+      blocks.push(block);
     }
   }
 
-  const blocks = [...prefix, ...newSuffix];
+  // 兜底补齐：确保每一行都被 block 覆盖（空行为 gap，非空行为 paragraph）。
+  appendUncoveredLineBlocks(doc, text, blocks);
 
-  // 设置双向引用（仅对新解析/变更的 blocks）
-  for (const block of newSuffix) {
+  blocks.sort((a, b) => a.documentPosFrom - b.documentPosFrom || a.documentPosTo - b.documentPosTo);
+
+  // 设置 paragraph -> block 的双向引用。
+  for (const block of blocks) {
     assignBlockToParagraphs(doc, block);
   }
 
-  // 重置 dirty
+  doc.blocks = blocks;
   doc.dirtyFromIndex = doc.paraphsLength;
 
   const elapsed = performance.now() - t0;
   if (elapsed > 1) {
-    console.log(`[parseBlocks] ${elapsed.toFixed(1)}ms, total=${blocks.length}, reused_prefix=${prefix.length}, reparsed=${newSuffix.length}`);
+    console.log(`[parseBlocks] ${elapsed.toFixed(1)}ms, total=${blocks.length}, full_parse=1`);
   }
   return blocks;
 }
 
-function lastBlockEnd(blocks: Block[], doc: Document): number {
-  const last = blocks[blocks.length - 1];
-  return doc.getParagraphAtPos(last.documentPosTo).documentOffsetIndex;
-}
+function mapTopLevelNodeToBlock(node: MdastNode, doc: Document, text: string): Block | null {
+  const range = getLineAlignedRange(node.position, doc);
+  if (!range) return null;
 
-function tryCodeFence(doc: Document, text: string, lineIndex: number, ln: Paragraph, blocks: Block[]): boolean {
-  const lnText = ln.text;
-  const m = codeFenceRe.exec(lnText);
-  if (!m) return false;
-
-  const fence = m[1];
-  const lang = m[2] || "";
-  const fenceLen = fence.length;
-  const isMermaid = lang === "mermaid";
-
-  let endLineNum = -1;
-  for (let j = lineIndex + 1; j < doc.paraphsLength; j++) {
-    const l = doc.getParagraph(j);
-    if (new RegExp(`^\`{${fenceLen},}\\s*$`).test(l.text)) {
-      endLineNum = j;
-      break;
-    }
+  if (node.type === "heading") {
+    const level = clampHeadingLevel(node.depth);
+    return createRangeBlock("heading", range, text, { level });
   }
 
-  if (endLineNum <= 0) return false;
+  if (node.type === "thematicBreak") {
+    return createRangeBlock("hr", range, text);
+  }
 
-  const startParagraph = doc.getParagraph(lineIndex);
-  const endParagraph = doc.getParagraph(endLineNum);
-  const id = hashBlockId(text.slice(startParagraph.documentPosFrom, endParagraph.documentPosTo));
+  if (node.type === "blockquote") {
+    return createRangeBlock("blockquote", range, text);
+  }
 
-  if (isMermaid) {
-    const codeLines: string[] = [];
-    for (let j = lineIndex + 1; j < endLineNum; j++) {
-      codeLines.push(doc.getParagraph(j).text);
-    }
-    const code = codeLines.join("\n").trim();
-    if (code) {
-      blocks.push({
-        type: "mermaid",
-        id,
-        code,
-        documentPosFrom: startParagraph.documentPosFrom,
-        documentPosTo: endParagraph.documentPosTo,
-      });
-    } else {
-      // 空 mermaid 块退化为普通 code 块，避免不 push 导致无限循环
-      blocks.push({
-        type: "code",
-        id,
-        lang: "mermaid",
-        documentPosFrom: startParagraph.documentPosFrom,
-        documentPosTo: endParagraph.documentPosTo,
-      });
-    }
-  } else {
-    blocks.push({
-      type: "code",
-      id,
-      lang,
-      documentPosFrom: startParagraph.documentPosFrom,
-      documentPosTo: endParagraph.documentPosTo,
+  if (node.type === "table") {
+    return createRangeBlock("table", range, text);
+  }
+
+  if (node.type === "html" || node.type === "raw") {
+    return createRangeBlock("html", range, text, {
+      html: text.slice(range.documentPosFrom, range.documentPosTo),
     });
   }
 
-  return true;
-}
-
-function tryMathFence(doc: Document, text: string, lineIndex: number, ln: Paragraph, blocks: Block[]): boolean {
-  if (!mathFenceRe.test(ln.text)) return false;
-
-  let endLineNum = -1;
-  for (let j = lineIndex + 1; j < doc.paraphsLength; j++) {
-    if (mathFenceRe.test(doc.getParagraph(j).text)) {
-      endLineNum = j;
-      break;
-    }
+  if (node.type === "math") {
+    const latex = (node.value ?? "").trim();
+    if (!latex) return null;
+    return createRangeBlock("math", range, text, { latex });
   }
 
-  if (endLineNum <= 0) return false;
-
-  const startParagraph = doc.getParagraph(lineIndex);
-  const endParagraph = doc.getParagraph(endLineNum);
-  const latex = text.slice(startParagraph.documentPosTo + 1, endParagraph.documentPosFrom).trim();
-  if (!latex) return false;
-
-  blocks.push({
-    type: "math",
-    id: hashBlockId(text.slice(startParagraph.documentPosFrom, endParagraph.documentPosTo)),
-    latex,
-    documentPosFrom: startParagraph.documentPosFrom,
-    documentPosTo: endParagraph.documentPosTo,
-  });
-  return true;
-}
-
-function tryHtmlBlock(doc: Document, text: string, lineIndex: number, ln: Paragraph, blocks: Block[]): boolean {
-  const m = htmlOpenTagRe.exec(ln.text);
-  if (!m) return false;
-
-  const tag = m[1];
-  const closeRe = htmlCloseTagRe(tag);
-  const openRe = htmlOpenCountRe(tag);
-  let depth = 0;
-  let endLineNum = -1;
-
-  for (let j = lineIndex; j < doc.paraphsLength; j++) {
-    const lText = doc.getParagraph(j).text;
-    const opens = lText.match(openRe);
-    if (opens) depth += opens.length;
-    if (closeRe.test(lText)) {
-      depth--;
-      if (depth <= 0) {
-        endLineNum = j;
-        break;
+  if (node.type === "code") {
+    const lang = (node.lang ?? "").trim();
+    if (lang === "mermaid") {
+      const code = (node.value ?? "").trim();
+      if (code) {
+        return createRangeBlock("mermaid", range, text, { code });
       }
+      return createRangeBlock("code", range, text, { lang: "mermaid" });
+    }
+    return createRangeBlock("code", range, text, { lang });
+  }
+
+  if (node.type === "image") {
+    return createRangeBlock("image", range, text, {
+      url: (node.url ?? "").trim(),
+      alt: node.alt ?? "",
+    });
+  }
+
+  if (node.type === "paragraph") {
+    const maybeMath = tryParseMathFenceFromRange(range, text);
+    if (maybeMath) {
+      return createRangeBlock("math", range, text, { latex: maybeMath });
+    }
+
+    const image = getParagraphStandaloneImage(node);
+    if (image) {
+      return createRangeBlock("image", range, text, {
+        url: (image.url ?? "").trim(),
+        alt: image.alt ?? "",
+      });
+    }
+    return createRangeBlock("paragraph", range, text);
+  }
+
+  // 未显式支持的顶层节点统一降级为 paragraph，保证渲染链路不断。
+  return createRangeBlock("paragraph", range, text);
+}
+
+function getLineAlignedRange(position: MdastPosition | undefined, doc: Document): { documentPosFrom: number; documentPosTo: number } | null {
+  const contentLen = doc.length;
+  const rawFrom = clamp(position?.start?.offset ?? -1, 0, contentLen);
+  const rawTo = clamp(position?.end?.offset ?? -1, 0, contentLen);
+  if (rawFrom < 0 || rawTo <= rawFrom) return null;
+
+  const startParagraph = doc.getParagraphAtPos(rawFrom);
+  const endSeek = Math.max(rawFrom, rawTo - 1);
+  const endParagraph = doc.getParagraphAtPos(endSeek);
+
+  const documentPosFrom = startParagraph.documentPosFrom;
+  const documentPosTo = endParagraph.documentPosTo;
+  if (documentPosTo <= documentPosFrom) return null;
+
+  return { documentPosFrom, documentPosTo };
+}
+
+function createRangeBlock(type: string, range: { documentPosFrom: number; documentPosTo: number }, text: string, extra: Partial<Block> = {}): Block {
+  return {
+    type,
+    id: hashBlockId(text.slice(range.documentPosFrom, range.documentPosTo)),
+    documentPosFrom: range.documentPosFrom,
+    documentPosTo: range.documentPosTo,
+    ...extra,
+  };
+}
+
+function getParagraphStandaloneImage(node: MdastNode): MdastNode | null {
+  if (!Array.isArray(node.children) || node.children.length === 0) return null;
+
+  let image: MdastNode | null = null;
+  for (const child of node.children) {
+    if (child.type === "image") {
+      if (image) return null;
+      image = child;
+      continue;
+    }
+
+    if (child.type === "text" && (child.value ?? "").trim() === "") {
+      continue;
+    }
+
+    return null;
+  }
+  return image;
+}
+
+function tryParseMathFenceFromRange(range: { documentPosFrom: number; documentPosTo: number }, text: string): string | null {
+  const raw = text.slice(range.documentPosFrom, range.documentPosTo).trim();
+  if (!raw.startsWith("$$") || !raw.endsWith("$$")) return null;
+
+  const lines = raw.split("\n");
+  if (lines.length < 3) return null;
+  if (lines[0].trim() !== "$$" || lines[lines.length - 1].trim() !== "$$") return null;
+
+  const latex = lines.slice(1, -1).join("\n").trim();
+  if (!latex) return null;
+  return latex;
+}
+
+function appendUncoveredLineBlocks(doc: Document, text: string, blocks: Block[]): void {
+  const covered = new Array(doc.paraphsLength).fill(false);
+
+  for (const block of blocks) {
+    const startIdx = doc.getParagraphAtPos(block.documentPosFrom).documentOffsetIndex;
+    const endIdx = doc.getParagraphAtPos(block.documentPosTo).documentOffsetIndex;
+    for (let i = startIdx; i <= endIdx; i++) {
+      covered[i] = true;
     }
   }
 
-  if (endLineNum <= 0) return false;
-
-  const startParagraph = doc.getParagraph(lineIndex);
-  const endParagraph = doc.getParagraph(endLineNum);
-  const html = text.slice(startParagraph.documentPosFrom, endParagraph.documentPosTo);
-  blocks.push({
-    type: "html",
-    id: hashBlockId(html),
-    html,
-    documentPosFrom: startParagraph.documentPosFrom,
-    documentPosTo: endParagraph.documentPosTo,
-  });
-  return true;
-}
-
-function tryTable(doc: Document, text: string, lineIndex: number, ln: Paragraph, blocks: Block[]): boolean {
-  if (!ln.text.includes("|")) return false;
-  if (lineIndex + 1 >= doc.paraphsLength) return false;
-
-  const nextParagraph = doc.getParagraph(lineIndex + 1);
-  if (!tableSeparatorRe.test(nextParagraph.text)) return false;
-
-  let endLineNum = lineIndex + 1;
-  for (let j = lineIndex + 2; j < doc.paraphsLength; j++) {
-    if (!doc.getParagraph(j).text.includes("|")) break;
-    endLineNum = j;
-  }
-
-  if (endLineNum <= lineIndex + 1) return false;
-
-  const startParagraph = doc.getParagraph(lineIndex);
-  const endParagraph = doc.getParagraph(endLineNum);
-  blocks.push({
-    type: "table",
-    id: hashBlockId(text.slice(startParagraph.documentPosFrom, endParagraph.documentPosTo)),
-    documentPosFrom: startParagraph.documentPosFrom,
-    documentPosTo: endParagraph.documentPosTo,
-  });
-  return true;
-}
-
-function tryImage(para: Paragraph, blocks: Block[]): boolean {
-  const m = imageRe.exec(para.text);
-  if (!m) return false;
-
-  blocks.push({
-    type: "image",
-    id: hashBlockId(para.text),
-    url: m[2].trim(),
-    alt: m[1],
-    documentPosFrom: para.documentPosFrom,
-    documentPosTo: para.documentPosTo,
-  });
-  return true;
-}
-
-function tryHeading(para: Paragraph, blocks: Block[]): boolean {
-  const m = headingRe.exec(para.text);
-  if (!m) return false;
-
-  blocks.push({
-    type: "heading",
-    id: hashBlockId(para.text),
-    level: m[1].length as 1 | 2 | 3 | 4 | 5 | 6,
-    documentPosFrom: para.documentPosFrom,
-    documentPosTo: para.documentPosTo,
-  });
-  return true;
-}
-
-function tryHr(para: Paragraph, blocks: Block[]): boolean {
-  if (!hrRe.test(para.text)) return false;
-
-  blocks.push({
-    type: "hr",
-    id: hashBlockId(para.text),
-    documentPosFrom: para.documentPosFrom,
-    documentPosTo: para.documentPosTo,
-  });
-  return true;
-}
-
-function tryBlockquote(doc: Document, text: string, lineIndex: number, toLine: number, blocks: Block[]): boolean {
-  const ln = doc.getParagraph(lineIndex);
-  if (!blockquoteRe.test(ln.text)) return false;
-
-  let endLineNum = lineIndex;
-  for (let j = lineIndex + 1; j <= toLine; j++) {
-    if (!blockquoteRe.test(doc.getParagraph(j).text)) break;
-    endLineNum = j;
-  }
-
-  const endParagraph = doc.getParagraph(endLineNum);
-  blocks.push({
-    type: "blockquote",
-    id: hashBlockId(text.slice(ln.documentPosFrom, endParagraph.documentPosTo)),
-    documentPosFrom: ln.documentPosFrom,
-    documentPosTo: endParagraph.documentPosTo,
-  });
-  return true;
-}
-
-function consumeParagraph(doc: Document, text: string, lineIndex: number, toLine: number, blocks: Block[]): number {
-  const startParagraph = doc.getParagraph(lineIndex);
-  let endLineNum = lineIndex;
-
-  for (let j = lineIndex + 1; j <= toLine; j++) {
-    const lText = doc.getParagraph(j).text;
-    if (lText.trim() === "") break;
-    if (codeFenceRe.test(lText)) break;
-    if (mathFenceRe.test(lText)) break;
-    if (htmlOpenTagRe.test(lText)) break;
-    if (imageRe.test(lText)) break;
-    if (headingRe.test(lText)) break;
-    if (hrRe.test(lText)) break;
-    if (blockquoteRe.test(lText)) break;
-    if (lText.includes("|") && j + 1 < doc.paraphsLength) {
-      if (tableSeparatorRe.test(doc.getParagraph(j + 1).text)) break;
+  let i = 0;
+  while (i < doc.paraphsLength) {
+    if (covered[i]) {
+      i++;
+      continue;
     }
-    endLineNum = j;
-  }
 
-  const endParagraph = doc.getParagraph(endLineNum);
-  blocks.push({
-    type: "paragraph",
-    id: hashBlockId(text.slice(startParagraph.documentPosFrom, endParagraph.documentPosTo)),
-    documentPosFrom: startParagraph.documentPosFrom,
-    documentPosTo: endParagraph.documentPosTo,
-  });
-  return endLineNum + 1;
+    const para = doc.getParagraph(i);
+    if (para.text.trim() === "") {
+      blocks.push({
+        type: "gap",
+        id: hashBlockId(para.text),
+        documentPosFrom: para.documentPosFrom,
+        documentPosTo: para.documentPosTo,
+      });
+      covered[i] = true;
+      i++;
+      continue;
+    }
+
+    const startLine = i;
+    let endLine = i;
+    for (let j = i + 1; j < doc.paraphsLength; j++) {
+      if (covered[j]) break;
+      if (doc.getParagraph(j).text.trim() === "") break;
+      endLine = j;
+    }
+
+    const startParagraph = doc.getParagraph(startLine);
+    const endParagraph = doc.getParagraph(endLine);
+    blocks.push({
+      type: "paragraph",
+      id: hashBlockId(text.slice(startParagraph.documentPosFrom, endParagraph.documentPosTo)),
+      documentPosFrom: startParagraph.documentPosFrom,
+      documentPosTo: endParagraph.documentPosTo,
+    });
+
+    for (let j = startLine; j <= endLine; j++) {
+      covered[j] = true;
+    }
+    i = endLine + 1;
+  }
+}
+
+function clampHeadingLevel(depth: number | undefined): 1 | 2 | 3 | 4 | 5 | 6 {
+  const n = typeof depth === "number" && Number.isFinite(depth) ? Math.floor(depth) : 1;
+  return clamp(n, 1, 6) as 1 | 2 | 3 | 4 | 5 | 6;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
