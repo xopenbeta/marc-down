@@ -21,7 +21,7 @@ export default defineConfig({
     host: host || false,
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Embedder-Policy": "credentialless",
     },
     hmr: host
       ? { protocol: "ws", host, port: 1421 }

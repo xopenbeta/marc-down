@@ -153,7 +153,8 @@ export class EditorCore {
     this.history.clear();
     this.selection.setSelection(0);
 
-    this.baseDir = options.fileKey ? options.fileKey.substring(0, options.fileKey.lastIndexOf("/")) : "";
+    const normalizedFileKey = options.fileKey.replace(/\\/g, "/");
+    this.baseDir = normalizedFileKey ? normalizedFileKey.substring(0, normalizedFileKey.lastIndexOf("/")) : "";
     this.renderer.setBaseDir(this.baseDir);
 
     const width = this.scrollLayer.clientWidth;

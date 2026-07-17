@@ -27,6 +27,71 @@ function positionPopup(popup: HTMLElement, anchor: { x: number; y: number; botto
   popup.style.left = `${left}px`;
 }
 
+function buildImageDebugInfo(url: string, img: HTMLImageElement) {
+  let resolvedHref = url;
+  let sameOrigin = false;
+  try {
+    const parsed = new URL(url, window.location.href);
+    resolvedHref = parsed.href;
+    sameOrigin = parsed.origin === window.location.origin;
+  } catch {
+    // Keep original url for malformed values.
+  }
+
+  return {
+    requestedUrl: url,
+    resolvedHref,
+    sameOrigin,
+    imgSrc: img.src,
+    currentSrc: img.currentSrc,
+    complete: img.complete,
+    naturalWidth: img.naturalWidth,
+    naturalHeight: img.naturalHeight,
+    documentBaseURI: document.baseURI,
+    locationHref: window.location.href,
+    locationOrigin: window.location.origin,
+  };
+}
+
+async function probeImageUrlIfSameOrigin(url: string): Promise<void> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url, window.location.href);
+  } catch (error) {
+    console.log("[ImagePreview] probe skipped: invalid URL", { url, error });
+    return;
+  }
+
+  if (parsed.origin !== window.location.origin) {
+    console.log("[ImagePreview] probe skipped: cross-origin URL", {
+      url: parsed.href,
+      origin: parsed.origin,
+      currentOrigin: window.location.origin,
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch(parsed.href, { cache: "no-store" });
+    console.log("[ImagePreview] same-origin probe result", {
+      url: parsed.href,
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get("content-type"),
+      contentLength: response.headers.get("content-length"),
+      coep: response.headers.get("cross-origin-embedder-policy"),
+      corp: response.headers.get("cross-origin-resource-policy"),
+      acao: response.headers.get("access-control-allow-origin"),
+    });
+  } catch (error) {
+    console.log("[ImagePreview] same-origin probe failed", {
+      url: parsed.href,
+      error,
+    });
+  }
+}
+
 function showImagePreview(anchor: { x: number; y: number; bottom: number }, url: string) {
   removeHoverPopup();
   hoverPopup = document.createElement("div");
@@ -44,7 +109,11 @@ function showImagePreview(anchor: { x: number; y: number; bottom: number }, url:
     }
   };
   img.onerror = (e) => {
-    console.log("[ImagePreview] failed to load image:", url, e);
+    console.log("[ImagePreview] failed to load image", {
+      ...buildImageDebugInfo(url, img),
+      event: e,
+    });
+    void probeImageUrlIfSameOrigin(url);
     if (hoverPopup === popup) {
       popup.style.visibility = "";
       popup.textContent = url;
@@ -173,16 +242,7 @@ export class EventHandlers {
     if (imageLink && !target.closest(".cm-image-inline-preview")) {
       if (hoverPopup?.classList.contains("cm-image-popup")) return;
       const previewImg = imageLink.querySelector(".cm-image-inline-preview img") as HTMLImageElement | null;
-      console.log("[ImageDebug] previewImg:", previewImg);
-      console.log("[ImageDebug] previewImg.src:", previewImg?.src);
-      console.log("[ImageDebug] previewImg.currentSrc:", previewImg?.currentSrc);
-      console.log("[ImageDebug] previewImg.complete:", previewImg?.complete);
-      console.log("[ImageDebug] previewImg.naturalWidth:", previewImg?.naturalWidth);
-      console.log("[ImageDebug] dataset.url:", imageLink.dataset.url);
       const url = (previewImg && previewImg.currentSrc) || imageLink.dataset.url || "";
-      console.log("[ImageDebug] final url for hover:", url);
-      // 尝试 fetch 来获取详细错误
-      fetch(url).then(r => console.log("[ImageDebug] fetch status:", r.status, r.statusText)).catch(e => console.log("[ImageDebug] fetch error:", e));
       if (url) {
         const rect = imageLink.getBoundingClientRect();
         showImagePreview({ x: rect.left, y: rect.top, bottom: rect.bottom }, url);

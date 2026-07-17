@@ -2,17 +2,34 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Block } from "./types";
 import { hashBlockId } from "../cache";
 
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
+function toAssetPath(path: string): string {
+  const normalized = normalizePath(path);
+  if (/^[A-Za-z]:\//.test(normalized)) return normalized;
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
 export function resolveImageUrl(url: string, baseDir: string): string {
-  if (/^(https?:\/\/|data:)/.test(url)) return url;
-  if (url.startsWith("/")) return convertFileSrc(url);
-  const cleaned = url.replace(/^\.\//, "");
-  const parts = (baseDir + "/" + cleaned).split("/");
+  if (/^(https?:\/\/|data:|blob:|asset:\/\/|file:\/\/)/.test(url)) return url;
+
+  const normalizedUrl = normalizePath(url);
+  const normalizedBaseDir = normalizePath(baseDir);
+
+  if (normalizedUrl.startsWith("/") || /^[A-Za-z]:\//.test(normalizedUrl)) {
+    return convertFileSrc(toAssetPath(normalizedUrl));
+  }
+
+  const cleaned = normalizedUrl.replace(/^\.\//, "");
+  const parts = (normalizedBaseDir + "/" + cleaned).split("/");
   const resolved: string[] = [];
   for (const part of parts) {
     if (part === "..") resolved.pop();
     else if (part !== "." && part !== "") resolved.push(part);
   }
-  return convertFileSrc("/" + resolved.join("/"));
+  return convertFileSrc(toAssetPath(resolved.join("/")));
 }
 
 export function findImageBlocks(doc: { getParagraph(n: number): { documentPosFrom: number; documentPosTo: number }; sliceContent(from: number, to: number): string; paraphsLength: number }, 

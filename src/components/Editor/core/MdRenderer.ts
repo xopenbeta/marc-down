@@ -5,6 +5,7 @@ import { EditorFontManager } from "./EditorFont";
 import { measureBlock, layoutBlock, coordsAtChar_blockOffsetIndex, getNewChar_BlockOffsetIndex, collectAllVisualLinesWithBlockOffset, collectAllVisualLines, glyphFullWidth } from "./TextMeasure";
 import type { Block, Chunk, Glyph, Segment, VisualLine } from "./parsers/types";
 import { parseDocumentToBlocks } from "./parsers";
+import { resolveImageUrl } from "./parsers/image";
 import katex from "katex";
 import { createCopyCodeButton, createLangSelectorButton } from "./widgets";
 import { highlightLines } from "./CodeHighlighter";
@@ -884,12 +885,22 @@ export class MdRenderer {
 
     const sourceSpan = document.createElement("span");
     sourceSpan.className = "cm-image-link";
-    if (seg.resolvedUrl) sourceSpan.dataset.url = this.resolveUrl(seg.resolvedUrl);
+    const rawUrl = seg.resolvedUrl ?? "";
+    const resolvedUrl = rawUrl ? resolveImageUrl(rawUrl, this.baseDir) : "";
+    console.log("[MdRenderer] inline image src", {
+      rawUrl,
+      resolvedUrl,
+      baseDir: this.baseDir,
+      documentBaseURI: document.baseURI,
+      locationHref: window.location.href,
+      locationOrigin: window.location.origin,
+    });
+    if (resolvedUrl) sourceSpan.dataset.url = resolvedUrl;
     const segRelFrom = clipFrom - seg.paraphOffsetFrom;
     const segRelTo = clipTo - seg.paraphOffsetFrom;
     this.renderChunksForRange(sourceSpan, seg.chunks, segRelFrom, segRelTo, paraAbsStart, seg.paraphOffsetFrom);
 
-    if (isFullyVisible && seg.resolvedUrl) {
+    if (isFullyVisible && rawUrl) {
       const previewSpan = document.createElement("span");
       previewSpan.className = "cm-image-inline-preview";
       if (seg.renderWidth !== undefined) {
@@ -897,8 +908,11 @@ export class MdRenderer {
         previewSpan.style.height = `${seg.renderHeight ?? seg.renderWidth}px`;
       }
       const img = document.createElement("img");
-      img.src = this.resolveUrl(seg.resolvedUrl);
+      img.src = resolvedUrl;
       img.draggable = false;
+      img.onerror = (e) => {
+        this.logImageLoadError("inline-preview", rawUrl, resolvedUrl, img, e);
+      };
       previewSpan.appendChild(img);
       sourceSpan.appendChild(previewSpan);
     }
@@ -1141,21 +1155,66 @@ export class MdRenderer {
     return div;
   }
 
+  private logImageLoadError(
+    scope: "inline-preview" | "block-widget",
+    rawUrl: string,
+    resolvedUrl: string,
+    img: HTMLImageElement,
+    event: Event | string,
+  ): void {
+    let parsedHref = resolvedUrl;
+    let sameOrigin = false;
+    try {
+      const parsed = new URL(resolvedUrl, window.location.href);
+      parsedHref = parsed.href;
+      sameOrigin = parsed.origin === window.location.origin;
+    } catch {
+      // Keep original resolved URL when URL parsing fails.
+    }
+
+    console.log("[MdRenderer] image load failed", {
+      scope,
+      rawUrl,
+      resolvedUrl,
+      parsedHref,
+      sameOrigin,
+      imgSrc: img.src,
+      currentSrc: img.currentSrc,
+      complete: img.complete,
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
+      documentBaseURI: document.baseURI,
+      locationHref: window.location.href,
+      locationOrigin: window.location.origin,
+      event,
+    });
+  }
+
   private buildImageWidget(block: Block): Promise<HTMLDivElement> {
     return new Promise((resolve) => {
       const div = document.createElement("div");
       div.className = "cm-image-block-render";
       div.contentEditable = "false";
 
+      const rawUrl = block.url!;
+      const resolvedUrl = resolveImageUrl(rawUrl, this.baseDir);
+      console.log("[MdRenderer] block image src", {
+        rawUrl,
+        resolvedUrl,
+        baseDir: this.baseDir,
+        documentBaseURI: document.baseURI,
+        locationHref: window.location.href,
+        locationOrigin: window.location.origin,
+      });
       const img = document.createElement("img");
-      img.src = this.resolveUrl(block.url!);
+      img.src = resolvedUrl;
       img.alt = block.alt!;
       img.style.maxWidth = "100%";
       img.style.borderRadius = "4px";
       div.appendChild(img);
       img.onload = () => resolve(div);
-      img.onerror = () => {
-        console.log(`Failed to load image: ${block.url}`);
+      img.onerror = (e) => {
+        this.logImageLoadError("block-widget", rawUrl, resolvedUrl, img, e);
         resolve(div);
       };
     });
@@ -1261,19 +1320,6 @@ export class MdRenderer {
       lines.push(getParagraphText(this.doc, para));
     }
     return lines.join("\n");
-  }
-
-  private resolveUrl(url: string): string {
-    if (!this.baseDir || /^(https?:\/\/|data:)/.test(url)) return url;
-    if (url.startsWith("/")) return `asset://localhost/${url}`;
-    const cleaned = url.replace(/^\.\//,  "");
-    const parts = (this.baseDir + "/" + cleaned).split("/");
-    const resolved: string[] = [];
-    for (const part of parts) {
-      if (part === "..") resolved.pop();
-      else if (part !== "." && part !== "") resolved.push(part);
-    }
-    return `asset://localhost//${resolved.join("/")}`;
   }
 
   private parseTableRow(para: string): string[] {
