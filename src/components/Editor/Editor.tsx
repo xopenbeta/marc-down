@@ -31,7 +31,7 @@ export function Editor() {
   const setSidebarCollapsed = useSetAtom(isSidebarCollapsedAtom);
   const setOutlineCollapsed = useSetAtom(isOutlineCollapsedAtom);
   const { handleOutlineResize } = usePanelLayout();
-  const { updateFileContent, openPath } = useFile();
+  const { updateFileContent, openPath, openFileDialog } = useFile();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorCore | null>(null);
   const { padding, edgeSize } = useEditorPadding(editorRef);
@@ -44,6 +44,7 @@ export function Editor() {
   useEditorContextMenu();
   useAppTitle();
   const { isDragOver } = useDropFile();
+  const isWindows = navigator.userAgent.includes("Windows");
 
   const activeFilePath = activeFile?.path ?? null;
   const activeFileContent = activeFile?.content ?? "";
@@ -237,9 +238,11 @@ export function Editor() {
             color: "var(--text-secondary)",
           }}
         >
-          <p style={{ fontSize: 13 }}>Open a folder or file to start editing</p>
+          <p style={{ fontSize: 13 }}>
+            {isWindows ? "Open a file to start editing" : "Open a folder or file to start editing"}
+          </p>
           <button
-            onClick={openPath}
+            onClick={isWindows ? openFileDialog : openPath}
             style={{
               padding: "5px 16px",
               background: "var(--text-primary)",
