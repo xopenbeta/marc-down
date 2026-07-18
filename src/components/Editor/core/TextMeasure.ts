@@ -74,7 +74,10 @@ function measureInlineMath(latex: string): { width: number; height: number } {
   }
   document.body.appendChild(container);
   const rect = container.getBoundingClientRect();
-  const width = Math.ceil(rect.width);
+  const style = window.getComputedStyle(container);
+  const marginLeft = Number.parseFloat(style.marginLeft) || 0;
+  const marginRight = Number.parseFloat(style.marginRight) || 0;
+  const width = Math.ceil(rect.width + marginLeft + marginRight);
   const height = Math.ceil(rect.height);
   document.body.removeChild(container);
 
