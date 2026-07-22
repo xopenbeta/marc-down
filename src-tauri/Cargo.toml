@@ -2,6 +2,9 @@
 name = "marc-down"
 version = "0.1.0"
 edition = "2021"
+authors = ["MarcDown Contributors"]
+description = "A lightweight split-view Markdown editor."
+license = "GPL-3.0"
 
 [lib]
 name = "marc_down_lib"

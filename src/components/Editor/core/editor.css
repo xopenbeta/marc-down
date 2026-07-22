@@ -6,6 +6,10 @@
   position: relative;
 }
 
+.editor-background-balatro .native-editor {
+  background: transparent;
+}
+
 /* --- Custom Scrollbar --- */
 .native-editor-scrollbar {
   position: absolute;
@@ -50,6 +54,10 @@
   background: var(--bg-primary);
   background-clip: content-box;
   position: relative;
+}
+
+.editor-background-balatro .native-editor-scroll-layer {
+  background: transparent;
 }
 
 .native-editor-scroll-layer::-webkit-scrollbar {

@@ -4,6 +4,7 @@ export interface AppSettings {
   saveMode: "auto" | "manual";
   autoSaveInterval: number;
   theme: "light" | "dark" | "system";
+  editorBackground: "none" | "balatro";
   showSpaceDots: boolean;
   debugTopLabels: boolean;
   debugHeightPanel: boolean;
@@ -16,6 +17,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   saveMode: "auto",
   autoSaveInterval: 3,
   theme: "system",
+  editorBackground: "none",
   showSpaceDots: false,
   debugTopLabels: false,
   debugHeightPanel: false,

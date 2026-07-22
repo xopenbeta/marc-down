@@ -221,6 +221,24 @@ function EditorSection({
       <SectionTitle>Editor</SectionTitle>
 
       <div style={{ marginBottom: 16 }}>
+        <FieldLabel>Editor Background</FieldLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ToggleButton
+            active={settings.editorBackground === "none"}
+            onClick={() => onChange({ editorBackground: "none" })}
+          >
+            None
+          </ToggleButton>
+          <ToggleButton
+            active={settings.editorBackground === "balatro"}
+            onClick={() => onChange({ editorBackground: "balatro" })}
+          >
+            Balatro
+          </ToggleButton>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
         <FieldLabel>Save Mode</FieldLabel>
         <div style={{ display: "flex", gap: 8 }}>
           <ToggleButton

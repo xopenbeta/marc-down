@@ -31,6 +31,10 @@
   },
   "bundle": {
     "active": true,
+    "publisher": "MarcDown Contributors",
+    "category": "Productivity",
+    "shortDescription": "A lightweight split-view Markdown editor.",
+    "longDescription": "MarcDown is a lightweight split-view Markdown editor focused on fast editing, clear structure navigation, and cross-file search for daily writing workflows.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -38,6 +42,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "packaging/linux/MarcDown.desktop.hbs"
+      },
+      "rpm": {
+        "desktopTemplate": "packaging/linux/MarcDown.desktop.hbs"
+      }
+    },
     "fileAssociations": [
       {
         "ext": ["md", "markdown"],
