@@ -31,7 +31,7 @@ export function Editor() {
   const setSidebarCollapsed = useSetAtom(isSidebarCollapsedAtom);
   const setOutlineCollapsed = useSetAtom(isOutlineCollapsedAtom);
   const { handleOutlineResize } = usePanelLayout();
-  const { updateFileContent, openPath, openFileDialog } = useFile();
+  const { updateFileContent, openFileDialog } = useFile();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorCore | null>(null);
   const { padding, edgeSize } = useEditorPadding(editorRef);
@@ -44,8 +44,6 @@ export function Editor() {
   useEditorContextMenu();
   useAppTitle();
   const { isDragOver } = useDropFile();
-  const isWindows = navigator.userAgent.includes("Windows");
-
   const activeFilePath = activeFile?.path ?? null;
   const activeFileContent = activeFile?.content ?? "";
   const settings = useAtomValue(settingsAtom);
