@@ -856,9 +856,6 @@ export class MdRenderer {
       renderSpan.style.display = "inline-block";
       renderSpan.style.verticalAlign = "middle";
       renderSpan.style.overflow = "hidden";
-      if (seg.renderWidth !== undefined) {
-        renderSpan.style.maxWidth = `${seg.renderWidth}px`;
-      }
       try {
         katex.render(seg.latex, renderSpan, { displayMode: false, throwOnError: false, output: "html" });
       } catch {

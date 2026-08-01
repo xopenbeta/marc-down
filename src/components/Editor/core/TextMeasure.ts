@@ -73,12 +73,13 @@ function measureInlineMath(latex: string): { width: number; height: number } {
     container.textContent = latex;
   }
   document.body.appendChild(container);
-  const rect = container.getBoundingClientRect();
+  const rendered = container.firstElementChild as HTMLElement | null;
+  const rect = rendered?.getBoundingClientRect() ?? container.getBoundingClientRect();
   const style = window.getComputedStyle(container);
   const marginLeft = Number.parseFloat(style.marginLeft) || 0;
   const marginRight = Number.parseFloat(style.marginRight) || 0;
-  const width = Math.ceil(rect.width + marginLeft + marginRight);
-  const height = Math.ceil(rect.height);
+  const width = Math.ceil(Math.max(rect.width, rendered?.scrollWidth ?? 0) + marginLeft + marginRight);
+  const height = Math.ceil(Math.max(rect.height, rendered?.scrollHeight ?? 0));
   document.body.removeChild(container);
 
   cached = { width: width || 20, height: height || 18 };
