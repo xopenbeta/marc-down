@@ -1,9 +1,9 @@
 name: Release
 on:
-  workflow_dispatch:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   release:
@@ -11,7 +11,6 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         platform: [macos-latest, ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.platform }}
@@ -19,9 +18,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
 
       - name: Install dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
@@ -33,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 'lts/*'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
@@ -57,56 +53,19 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      - name: Resolve app version
-        shell: bash
-        run: |
-          VERSION=$(node -e "const fs=require('fs'); const config=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); console.log(config.version)")
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "RELEASE_TAG=v$VERSION" >> $GITHUB_ENV
-
       - name: Add Rust targets for macOS
         if: matrix.platform == 'macos-latest'
         run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
 
       - name: Build and Create Release
-        id: tauri_build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ env.RELEASE_TAG }}
-          releaseName: 'Marc Down ${{ env.RELEASE_TAG }}'
+          tagName: v__VERSION__
+          releaseName: 'Marc Down v__VERSION__'
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.platform == 'macos-latest' && '--target universal-apple-darwin' || '' }}
-
-      - name: Upload release artifacts
-        if: ${{ success() }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          ASSET_DIR="$RUNNER_TEMP/release-assets"
-          mkdir -p "$ASSET_DIR"
-
-          files_found=0
-          while IFS= read -r file; do
-            cp "$file" "$ASSET_DIR/"
-            files_found=1
-          done < <(find src-tauri/target -path '*/release/bundle/*' -type f | sort)
-
-          if [ "$files_found" -eq 0 ]; then
-            echo "No bundle artifacts found under src-tauri/target; skipping release upload."
-            exit 0
-          fi
-
-          if gh release view "${{ env.RELEASE_TAG }}" >/dev/null 2>&1; then
-            gh release upload "${{ env.RELEASE_TAG }}" "$ASSET_DIR"/* --clobber
-          else
-            gh release create "${{ env.RELEASE_TAG }}" "$ASSET_DIR"/* \
-              --title "Marc Down ${{ env.RELEASE_TAG }}" \
-              --notes "Automated release for ${{ env.RELEASE_TAG }}"
-          fi
