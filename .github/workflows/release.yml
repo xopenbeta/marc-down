@@ -20,7 +20,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Install dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
@@ -32,7 +33,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          node-version: '20'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
@@ -83,12 +84,28 @@ jobs:
 
       - name: Upload release artifacts
         if: ${{ success() }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: 'Marc Down ${{ env.RELEASE_TAG }}'
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: false
-          files: |
-            src-tauri/target/**/release/bundle/**/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET_DIR="$RUNNER_TEMP/release-assets"
+          mkdir -p "$ASSET_DIR"
+
+          mapfile -t files < <(find src-tauri/target -path '*/release/bundle/*' -type f | sort)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No bundle artifacts found under src-tauri/target; skipping release upload."
+            exit 0
+          fi
+
+          for file in "${files[@]}"; do
+            cp "$file" "$ASSET_DIR/"
+          done
+
+          if gh release view "${{ env.RELEASE_TAG }}" >/dev/null 2>&1; then
+            gh release upload "${{ env.RELEASE_TAG }}" "$ASSET_DIR"/* --clobber
+          else
+            gh release create "${{ env.RELEASE_TAG }}" "$ASSET_DIR"/* \
+              --title "Marc Down ${{ env.RELEASE_TAG }}" \
+              --notes "Automated release for ${{ env.RELEASE_TAG }}"
+          fi
