@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/niceda/tauri/dev/crates/tauri-config-schema/schema.json",
   "productName": "MarcDown",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "identifier": "com.marcdown.desktop",
   "build": {
     "frontendDist": "../dist",
