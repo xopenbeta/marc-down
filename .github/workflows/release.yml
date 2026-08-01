@@ -92,15 +92,16 @@ jobs:
           ASSET_DIR="$RUNNER_TEMP/release-assets"
           mkdir -p "$ASSET_DIR"
 
-          mapfile -t files < <(find src-tauri/target -path '*/release/bundle/*' -type f | sort)
-          if [ ${#files[@]} -eq 0 ]; then
+          files_found=0
+          while IFS= read -r file; do
+            cp "$file" "$ASSET_DIR/"
+            files_found=1
+          done < <(find src-tauri/target -path '*/release/bundle/*' -type f | sort)
+
+          if [ "$files_found" -eq 0 ]; then
             echo "No bundle artifacts found under src-tauri/target; skipping release upload."
             exit 0
           fi
-
-          for file in "${files[@]}"; do
-            cp "$file" "$ASSET_DIR/"
-          done
 
           if gh release view "${{ env.RELEASE_TAG }}" >/dev/null 2>&1; then
             gh release upload "${{ env.RELEASE_TAG }}" "$ASSET_DIR"/* --clobber
