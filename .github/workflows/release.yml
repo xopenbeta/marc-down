@@ -1,6 +1,9 @@
 name: Release
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   release:
@@ -8,6 +11,7 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         platform: [macos-latest, ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.platform }}
@@ -52,19 +56,39 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      - name: Resolve app version
+        shell: bash
+        run: |
+          VERSION=$(node -e "const fs=require('fs'); const config=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); console.log(config.version)")
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "RELEASE_TAG=v$VERSION" >> $GITHUB_ENV
+
       - name: Add Rust targets for macOS
         if: matrix.platform == 'macos-latest'
         run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
 
       - name: Build and Create Release
+        id: tauri_build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__ # the action automatically replaces __VERSION__ with the app version
-          releaseName: 'Marc Down v__VERSION__'
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: 'Marc Down ${{ env.RELEASE_TAG }}'
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.platform == 'macos-latest' && '--target universal-apple-darwin' || '' }}
+
+      - name: Upload release artifacts
+        if: ${{ success() }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: 'Marc Down ${{ env.RELEASE_TAG }}'
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: false
+          files: |
+            src-tauri/target/**/release/bundle/**/*
