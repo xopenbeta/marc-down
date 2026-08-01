@@ -22,16 +22,12 @@ export function useFile() {
 
   const openPath = async () => {
     const result = await tauriFs.openPathDialog();
-    if (!result) return;
-    if (result.is_directory) {
-      setWorkspacePath(result.path);
-      const tree = await tauriFs.readDirectoryTree(result.path);
-      setFileTree(tree);
-      setSidebarCollapsed(false);
-    } else {
-      const name = result.path.substring(result.path.lastIndexOf("/") + 1);
-      await openFile(result.path, name);
-    }
+    if (!result?.is_directory) return;
+
+    setWorkspacePath(result.path);
+    const tree = await tauriFs.readDirectoryTree(result.path);
+    setFileTree(tree);
+    setSidebarCollapsed(false);
   };
 
   const openWorkspace = async () => {

@@ -31,15 +31,15 @@ export function Sidebar() {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        background: "var(--bg-primary)",
+        background: "var(--bg-surface)",
       }}
     >
       <div
         style={{
-          padding: "0px 8px",
+          padding: "0px 4px",
           display: "flex",
           alignItems: "center",
-          gap: 2,
+          background: "transparent",
         }}
       >
         <IconButton onClick={openPath} title="Open">
@@ -107,6 +107,10 @@ function IconButton({
   title: string;
   children: React.ReactNode;
 }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+  const isActive = isHovered || isPressed;
+
   return (
     <button
       onClick={onClick}
@@ -114,21 +118,29 @@ function IconButton({
       style={{
         width: 28,
         height: 28,
-        borderRadius: 4,
+        borderRadius: "50%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "var(--text-muted)",
-        opacity: 0.5,
-        transition: "opacity 0.15s, color 0.15s",
+        color: isActive ? "var(--text-primary)" : "var(--text-muted)",
+        background: isActive ? "var(--bg-hover)" : "transparent",
+        boxShadow: isActive ? "inset 0 0 0 1px rgba(0, 0, 0, 0.08)" : "none",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        transition: "background-color 0.15s, color 0.15s, box-shadow 0.15s",
+        opacity: 1,
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.opacity = "1";
-        e.currentTarget.style.color = "var(--text-primary)";
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
       }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.opacity = "0.5";
-        e.currentTarget.style.color = "var(--text-muted)";
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onBlur={() => {
+        setIsHovered(false);
+        setIsPressed(false);
       }}
     >
       {children}
