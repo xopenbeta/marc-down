@@ -18,6 +18,73 @@ type RawMatchEntry = {
   resourceDestination?: { from: number; to: number };
 };
 
+type StyleMatch = {
+  from: number;
+  to: number;
+  type: string;
+  cssClass: string;
+  dataAttrs?: Record<string, string>;
+};
+
+function pushDelimitedStyle(
+  matches: StyleMatch[],
+  relFrom: number,
+  relTo: number,
+  openDelimiterLength: number,
+  closeDelimiterLength: number,
+  contentType: string,
+  contentCssClass: string,
+) {
+  if (relTo <= relFrom) return;
+
+  const contentFrom = relFrom + openDelimiterLength;
+  const contentTo = relTo - closeDelimiterLength;
+
+  if (openDelimiterLength > 0) {
+    matches.push({
+      from: relFrom,
+      to: Math.min(contentFrom, relTo),
+      type: `${contentType}-delimiter-open`,
+      cssClass: "tok-markup-delimiter",
+    });
+  }
+
+  if (contentFrom < contentTo) {
+    matches.push({
+      from: contentFrom,
+      to: contentTo,
+      type: contentType,
+      cssClass: contentCssClass,
+    });
+  }
+
+  if (closeDelimiterLength > 0) {
+    matches.push({
+      from: Math.max(contentTo, relFrom),
+      to: relTo,
+      type: `${contentType}-delimiter-close`,
+      cssClass: "tok-markup-delimiter",
+    });
+  }
+}
+
+function getDelimiterLengths(text: string, from: number, to: number): { open: number; close: number } {
+  const openChar = text[from];
+  const closeChar = text[to - 1];
+  let open = 0;
+  let close = 0;
+
+  if (openChar === "*" || openChar === "_") {
+    while (from + open < to && text[from + open] === openChar) open++;
+  }
+
+  if (closeChar === "*" || closeChar === "_") {
+    while (to - 1 - close >= from && text[to - 1 - close] === closeChar) close++;
+  }
+
+  return { open, close };
+}
+
 /** 去除重叠匹配，保留排在前面的（贪心）。要求入参已按 from 升序排列。 */
 function removeOverlapping<T extends { from: number; to: number }>(matches: T[]): T[] {
   const result: T[] = [];
@@ -57,8 +124,40 @@ function extractStyleMatches(
   runFrom: number,
   runTo: number,
   paraText: string,
-): { from: number; to: number; type: string; cssClass: string; dataAttrs?: Record<string, string> }[] {
-  const matches: { from: number; to: number; type: string; cssClass: string; dataAttrs?: Record<string, string> }[] = [];
+): StyleMatch[] {
+  const matches: StyleMatch[] = [];
+
+  const headingMatch = paraText.match(/^(#{1,6})(?=\s)/);
+  if (headingMatch) {
+    const markerFrom = 0;
+    const markerTo = headingMatch[1].length;
+    if (markerFrom >= runFrom && markerTo <= runTo) {
+      matches.push({
+        from: markerFrom - runFrom,
+        to: markerTo - runFrom,
+        type: "heading-delimiter",
+        cssClass: "tok-markup-delimiter",
+      });
+    }
+  }
+
+  const blockquoteMatch = paraText.match(/^(\s*(?:>\s*)+)/);
+  if (blockquoteMatch) {
+    const markerText = blockquoteMatch[1];
+    for (let index = 0; index < markerText.length; index++) {
+      if (markerText[index] !== ">") continue;
+      const markerFrom = index;
+      const markerTo = index + 1;
+      if (markerFrom >= runFrom && markerTo <= runTo) {
+        matches.push({
+          from: markerFrom - runFrom,
+          to: markerTo - runFrom,
+          type: "blockquote-delimiter",
+          cssClass: "tok-markup-delimiter",
+        });
+      }
+    }
+  }
 
   for (const tok of tokens) {
     // 只处理落在 [runFrom, runTo) 范围内的 token
@@ -67,15 +166,21 @@ function extractStyleMatches(
     const relTo = tok.to - runFrom;
 
     switch (tok.type) {
-      case "strong":
-        matches.push({ from: relFrom, to: relTo, type: "strong", cssClass: "tok-strong" });
+      case "strong": {
+        const delimiters = getDelimiterLengths(paraText, tok.from, tok.to);
+        pushDelimitedStyle(matches, relFrom, relTo, delimiters.open, delimiters.close, "strong", "tok-strong");
         break;
-      case "emphasis":
-        matches.push({ from: relFrom, to: relTo, type: "emphasis", cssClass: "tok-emphasis" });
+      }
+      case "emphasis": {
+        const delimiters = getDelimiterLengths(paraText, tok.from, tok.to);
+        pushDelimitedStyle(matches, relFrom, relTo, delimiters.open, delimiters.close, "emphasis", "tok-emphasis");
         break;
-      case "strong-emphasis":
-        matches.push({ from: relFrom, to: relTo, type: "strong-emphasis", cssClass: "tok-strong tok-emphasis" });
+      }
+      case "strong-emphasis": {
+        const delimiters = getDelimiterLengths(paraText, tok.from, tok.to);
+        pushDelimitedStyle(matches, relFrom, relTo, delimiters.open, delimiters.close, "strong-emphasis", "tok-strong tok-emphasis");
         break;
+      }
       case "strikethrough":
         matches.push({ from: relFrom, to: relTo, type: "strikethrough", cssClass: "tok-strikethrough" });
         break;
@@ -194,7 +299,6 @@ export function parseSegments(
   const buildTextRunChunks = (runFrom: number, runTo: number): Chunk[] => {
     const runText = paraText.substring(runFrom, runTo);
 
-    type StyleMatch = { from: number; to: number; type: string; cssClass: string; dataAttrs?: Record<string, string> };
     // 从 micromark tokens 中提取落在此 text-run 范围内的样式
     const styleMatches: StyleMatch[] = extractStyleMatches(tokens, runFrom, runTo, paraText);
 
@@ -310,7 +414,7 @@ export function parseSegments(
         segmentOffsetFrom: 0,
         segmentOffsetTo: 1,
         type: "punctuation",
-        cssClass: "tok-punctuation",
+        cssClass: "tok-markup-delimiter",
         text: "$",
         font,
         glyphs: [],
@@ -330,7 +434,7 @@ export function parseSegments(
         segmentOffsetFrom: segLen - 1,
         segmentOffsetTo: segLen,
         type: "punctuation",
-        cssClass: "tok-punctuation",
+        cssClass: "tok-markup-delimiter",
         text: "$",
         font,
         glyphs: [],
@@ -410,7 +514,7 @@ export function parseSegments(
         segmentOffsetFrom: 0,
         segmentOffsetTo: 1,
         type: "punctuation",
-        cssClass: "tok-punctuation",
+        cssClass: "tok-markup-delimiter",
         text: "`",
         font,
         glyphs: [],
@@ -430,7 +534,7 @@ export function parseSegments(
         segmentOffsetFrom: segLen - 1,
         segmentOffsetTo: segLen,
         type: "punctuation",
-        cssClass: "tok-punctuation",
+        cssClass: "tok-markup-delimiter",
         text: "`",
         font,
         glyphs: [],

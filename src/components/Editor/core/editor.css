@@ -209,6 +209,10 @@
   opacity: 0.4;
 }
 
+.tok-markup-delimiter {
+  color: var(--text-muted);
+}
+
 .tok-link-title {
   color: var(--link-color);
   cursor: pointer;
