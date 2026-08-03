@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from "lucide-react";
+import { File, Folder, FolderOpen } from "lucide-react";
 import { activeFilePathAtom } from "@/atoms";
 import { useFile } from "@/hooks/useFile";
 import type { FileNode } from "@/types";
@@ -63,16 +63,11 @@ export function FileTreeNode({
         }}
       >
         {node.is_directory ? (
-          <span style={{ display: "flex", alignItems: "center", marginRight: 4, flexShrink: 0 }}>
-            {isExpanded ? (
-              <ChevronDown size={14} style={{ marginRight: 2 }} />
-            ) : (
-              <ChevronRight size={14} style={{ marginRight: 2 }} />
-            )}
+          <span style={{ display: "flex", alignItems: "center", width: 14, marginRight: 4, flexShrink: 0 }}>
             {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
           </span>
         ) : (
-          <span style={{ display: "flex", alignItems: "center", marginRight: 4, marginLeft: 16, flexShrink: 0 }}>
+          <span style={{ display: "flex", alignItems: "center", width: 14, marginRight: 4, flexShrink: 0 }}>
             <File size={14} />
           </span>
         )}
