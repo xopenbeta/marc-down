@@ -9,7 +9,7 @@ import { useFile } from "@/hooks/useFile";
 import { FileTree } from "./FileTree";
 import { SearchPanel } from "../Search/SearchPanel";
 import { SettingsDialog } from "../Settings/SettingsDialog";
-
+const iconSize = 18;
 export function Sidebar() {
   const fileTree = useAtomValue(fileTreeAtom);
   const isSearchOpen = useAtomValue(isSearchPanelOpenAtom);
@@ -32,6 +32,8 @@ export function Sidebar() {
         display: "flex",
         flexDirection: "column",
         background: "var(--bg-surface)",
+        borderRight: "1px solid var(--border-color)",
+        boxShadow: "inset -12px 0 16px -16px rgba(0, 0, 0, 0.15)",
       }}
     >
       <div
@@ -39,20 +41,21 @@ export function Sidebar() {
           padding: "0px 4px",
           display: "flex",
           alignItems: "center",
-          background: "transparent",
+          height: '32px',
+          // background: "red",
         }}
       >
         <IconButton onClick={openPath} title="Open">
-          <FolderOpen size={16} />
+          <FolderOpen size={iconSize} />
         </IconButton>
         {/* <IconButton
           onClick={() => setSearchOpen((v) => !v)}
           title="Search"
         >
-          <Search size={16} />
+          <Search size={iconSize} />
         </IconButton> */}
         <IconButton onClick={() => setShowSettings(true)} title="Settings">
-          <Settings size={16} />
+          <Settings size={iconSize} />
         </IconButton>
       </div>
 
@@ -116,19 +119,19 @@ function IconButton({
       onClick={onClick}
       title={title}
       style={{
-        width: 28,
-        height: 28,
+        width: 26,
+        height: 26,
         borderRadius: "50%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         color: isActive ? "var(--text-primary)" : "var(--text-muted)",
-        background: isActive ? "var(--bg-hover)" : "transparent",
-        boxShadow: isActive ? "inset 0 0 0 1px rgba(0, 0, 0, 0.08)" : "none",
+        // background: isActive ? "var(--bg-hover)" : "transparent",
         border: "none",
         padding: 0,
         cursor: "pointer",
-        transition: "background-color 0.15s, color 0.15s, box-shadow 0.15s",
+        fontWeight: "normal",
+        // transition: "background-color 0.15s, color 0.15s, box-shadow 0.15s",
         opacity: 1,
       }}
       onMouseEnter={() => setIsHovered(true)}
