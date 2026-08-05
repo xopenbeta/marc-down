@@ -33,7 +33,7 @@ export function Sidebar() {
         flexDirection: "column",
         background: "var(--bg-surface)",
         borderRight: "1px solid var(--border-color)",
-        boxShadow: "inset -12px 0 16px -16px rgba(0, 0, 0, 0.15)",
+        boxShadow: "inset -12px 0 16px -16px rgba(0, 0, 0, 0.1)",
       }}
     >
       <div
