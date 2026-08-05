@@ -54,9 +54,10 @@ export function FileTreeNode({
           userSelect: "none",
           position: "relative",
           overflow: "hidden",
+          transition: "background-color 0.12s ease",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--bg-hover)";
+          e.currentTarget.style.background = "var(--file-tree-hover-bg)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = "transparent";

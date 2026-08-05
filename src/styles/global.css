@@ -9,6 +9,7 @@
   --bg-secondary: #ffffff;
   --bg-surface: #f5f5f5;
   --bg-hover: #f0f0f0;
+  --file-tree-hover-bg: #e6e6e6;
   --text-primary: #1a1a1a;
   --text-secondary: #555555;
   --text-muted: #888888;
@@ -53,6 +54,7 @@
   --bg-secondary: #252525;
   --bg-surface: #2a2a2a;
   --bg-hover: #333333;
+  --file-tree-hover-bg: #3b3b3b;
   --text-primary: #e0e0e0;
   --text-secondary: #aaaaaa;
   --text-muted: #888888;
