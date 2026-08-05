@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useAtomValue } from "jotai";
-import { FolderOpen, Settings } from "lucide-react";
 import {
   fileTreeAtom,
   isSearchPanelOpenAtom,
@@ -8,14 +7,11 @@ import {
 import { useFile } from "@/hooks/useFile";
 import { FileTree } from "./FileTree";
 import { SearchPanel } from "../Search/SearchPanel";
-import { SettingsDialog } from "../Settings/SettingsDialog";
-const iconSize = 18;
+
 export function Sidebar() {
   const fileTree = useAtomValue(fileTreeAtom);
   const isSearchOpen = useAtomValue(isSearchPanelOpenAtom);
-  // const setSearchOpen = useSetAtom(isSearchPanelOpenAtom);
   const { openPath, refreshTree } = useFile();
-  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -36,29 +32,6 @@ export function Sidebar() {
         boxShadow: "inset -12px 0 16px -16px rgba(0, 0, 0, 0.1)",
       }}
     >
-      <div
-        style={{
-          padding: "0px 4px",
-          display: "flex",
-          alignItems: "center",
-          height: '32px',
-          // background: "red",
-        }}
-      >
-        <IconButton onClick={openPath} title="Open">
-          <FolderOpen size={iconSize} />
-        </IconButton>
-        {/* <IconButton
-          onClick={() => setSearchOpen((v) => !v)}
-          title="Search"
-        >
-          <Search size={iconSize} />
-        </IconButton> */}
-        <IconButton onClick={() => setShowSettings(true)} title="Settings">
-          <Settings size={iconSize} />
-        </IconButton>
-      </div>
-
       {isSearchOpen ? (
         <SearchPanel />
       ) : (
@@ -93,60 +66,6 @@ export function Sidebar() {
           )}
         </div>
       )}
-
-      {showSettings && (
-        <SettingsDialog onClose={() => setShowSettings(false)} />
-      )}
     </div>
-  );
-}
-
-function IconButton({
-  onClick,
-  title,
-  children,
-}: {
-  onClick: () => void;
-  title: string;
-  children: React.ReactNode;
-}) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPressed, setIsPressed] = useState(false);
-  const isActive = isHovered || isPressed;
-
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        width: 26,
-        height: 26,
-        borderRadius: "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: isActive ? "var(--text-primary)" : "var(--text-muted)",
-        // background: isActive ? "var(--bg-hover)" : "transparent",
-        border: "none",
-        padding: 0,
-        cursor: "pointer",
-        fontWeight: "normal",
-        // transition: "background-color 0.15s, color 0.15s, box-shadow 0.15s",
-        opacity: 1,
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setIsPressed(false);
-      }}
-      onMouseDown={() => setIsPressed(true)}
-      onMouseUp={() => setIsPressed(false)}
-      onBlur={() => {
-        setIsHovered(false);
-        setIsPressed(false);
-      }}
-    >
-      {children}
-    </button>
   );
 }

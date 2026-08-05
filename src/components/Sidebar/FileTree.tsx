@@ -118,7 +118,7 @@ export function FileTree({ node: initialNode }: FileTreeProps) {
   return (
     <div
       onContextMenu={handleBlankContextMenu}
-      style={{ minHeight: "100%", height: "100%" }}
+      style={{ minHeight: "100%", height: "100%", paddingTop: 4 }}
     >
       {flatItems.map((item) => (
         <FileTreeNode

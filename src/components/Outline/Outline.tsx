@@ -1,8 +1,16 @@
 import { useState, useMemo, useCallback } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronsDownUp, ChevronsUpDown, Download } from "lucide-react";
+import {
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Download,
+  FolderOpen,
+  Settings,
+} from "lucide-react";
 import { activeFileAtom, outlineAtom, showExportDialogAtom } from "@/atoms";
+import { useFile } from "@/hooks/useFile";
 import { OutlineItem } from "./OutlineItem";
+import { SettingsDialog } from "../Settings/SettingsDialog";
 import type { HeadingItem } from "@/types";
 
 interface OutlineProps {
@@ -13,10 +21,12 @@ export function Outline({ onFoldAll }: OutlineProps) {
   const activeFile = useAtomValue(activeFileAtom);
   const headings = useAtomValue(outlineAtom);
   const setShowExport = useSetAtom(showExportDialogAtom);
+  const { openPath } = useFile();
   const [collapsedItems, setCollapsedItems] = useState<Set<number>>(
     new Set()
   );
   const [blocksFolded, setBlocksFolded] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const toggleItem = (paragraph: number) => {
     setCollapsedItems((prev) => {
@@ -66,64 +76,33 @@ export function Outline({ onFoldAll }: OutlineProps) {
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           padding: "0px 8px 0",
         }}
       >
-        <button
-          onClick={toggleFoldAllBlocks}
-          title={blocksFolded ? "展开所有源码块" : "折叠所有源码块"}
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 4,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--text-muted)",
-            opacity: 0.5,
-            transition: "opacity 0.15s, color 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "1";
-            e.currentTarget.style.color = "var(--text-primary)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "0.5";
-            e.currentTarget.style.color = "var(--text-muted)";
-          }}
-        >
-          {blocksFolded ? (
-            <ChevronsUpDown size={14} />
-          ) : (
-            <ChevronsDownUp size={14} />
-          )}
-        </button>
-        <button
-          onClick={() => setShowExport(true)}
-          title="导出"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 4,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--text-muted)",
-            opacity: 0.5,
-            transition: "opacity 0.15s, color 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "1";
-            e.currentTarget.style.color = "var(--text-primary)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "0.5";
-            e.currentTarget.style.color = "var(--text-muted)";
-          }}
-        >
-          <Download size={14} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <OutlineIconButton onClick={openPath} title="打开">
+            <FolderOpen size={14} />
+          </OutlineIconButton>
+          <OutlineIconButton onClick={() => setShowSettings(true)} title="设置">
+            <Settings size={14} />
+          </OutlineIconButton>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <OutlineIconButton
+            onClick={toggleFoldAllBlocks}
+            title={blocksFolded ? "展开所有源码块" : "折叠所有源码块"}
+          >
+            {blocksFolded ? (
+              <ChevronsUpDown size={14} />
+            ) : (
+              <ChevronsDownUp size={14} />
+            )}
+          </OutlineIconButton>
+          <OutlineIconButton onClick={() => setShowExport(true)} title="导出">
+            <Download size={14} />
+          </OutlineIconButton>
+        </div>
       </div>
       <div style={{ flex: 1, overflow: "auto", paddingTop: 8 }}>
         {visibleHeadings.length > 0 ? (
@@ -164,6 +143,47 @@ export function Outline({ onFoldAll }: OutlineProps) {
           <span>{activeFile.content.split("\n").length} 行</span>
         </div>
       )}
+      {showSettings && (
+        <SettingsDialog onClose={() => setShowSettings(false)} />
+      )}
     </div>
+  );
+}
+
+function OutlineIconButton({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 4,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text-muted)",
+        opacity: 0.5,
+        transition: "opacity 0.15s, color 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.opacity = "1";
+        e.currentTarget.style.color = "var(--text-primary)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.opacity = "0.5";
+        e.currentTarget.style.color = "var(--text-muted)";
+      }}
+    >
+      {children}
+    </button>
   );
 }
