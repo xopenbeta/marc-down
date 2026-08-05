@@ -10,6 +10,6 @@ function getStoredBoolean(key: string, defaultValue: boolean): boolean {
 }
 
 export const sidebarWidthAtom = atom(220);
-export const outlineWidthAtom = atom(150);
+export const outlineWidthAtom = atom(180);
 export const isSidebarCollapsedAtom = atomWithStorage("sidebar-collapsed", getStoredBoolean("sidebar-collapsed", false));
 export const isOutlineCollapsedAtom = atomWithStorage("outline-collapsed", getStoredBoolean("outline-collapsed", false));

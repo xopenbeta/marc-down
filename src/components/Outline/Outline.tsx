@@ -6,6 +6,7 @@ import {
   Download,
   FolderOpen,
   Settings,
+  User,
 } from "lucide-react";
 import { activeFileAtom, outlineAtom, showExportDialogAtom } from "@/atoms";
 import { useFile } from "@/hooks/useFile";
@@ -77,18 +78,10 @@ export function Outline({ onFoldAll }: OutlineProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0px 8px 0",
+          padding: "0px 4px 0",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <OutlineIconButton onClick={openPath} title="打开">
-            <FolderOpen size={14} />
-          </OutlineIconButton>
-          <OutlineIconButton onClick={() => setShowSettings(true)} title="设置">
-            <Settings size={14} />
-          </OutlineIconButton>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center" }}>
           <OutlineIconButton
             onClick={toggleFoldAllBlocks}
             title={blocksFolded ? "展开所有源码块" : "折叠所有源码块"}
@@ -103,35 +96,52 @@ export function Outline({ onFoldAll }: OutlineProps) {
             <Download size={14} />
           </OutlineIconButton>
         </div>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <OutlineIconButton onClick={openPath} title="打开">
+            <FolderOpen size={14} />
+          </OutlineIconButton>
+          <OutlineIconButton onClick={() => setShowSettings(true)} title="设置">
+            <User size={14} />
+          </OutlineIconButton>
+          <OutlineIconButton onClick={() => setShowSettings(true)} title="设置">
+            <Settings size={14} />
+          </OutlineIconButton>
+        </div>
       </div>
-      <div style={{ flex: 1, overflow: "auto", paddingTop: 8 }}>
-        {visibleHeadings.length > 0 ? (
-          visibleHeadings.map((heading, idx) => (
-            <OutlineItem
-              key={`${heading.paragraph}-${idx}`}
-              heading={heading}
-              isCollapsed={collapsedItems.has(heading.paragraph)}
-              onToggleCollapse={toggleItem}
-            />
-          ))
-        ) : (
-          <div
-            style={{
-              padding: "40px 20px",
-              textAlign: "center",
-              color: "var(--text-muted)",
-              fontSize: 12,
-            }}
-          >
-            No headings
-          </div>
-        )}
+      <div style={{ 
+            height: "100%",
+            overflow: "auto",
+            paddingTop: 8,
+            borderRadius: 8,
+            border: "1px solid var(--bg-hover)",
+            background: "var(--bg-panel)",
+            boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",flex: 1, minHeight: 0 }}>
+          {visibleHeadings.length > 0 ? (
+            visibleHeadings.map((heading, idx) => (
+              <OutlineItem
+                key={`${heading.paragraph}-${idx}`}
+                heading={heading}
+                isCollapsed={collapsedItems.has(heading.paragraph)}
+                onToggleCollapse={toggleItem}
+              />
+            ))
+          ) : (
+            <div
+              style={{
+                padding: "40px 20px",
+                textAlign: "center",
+                color: "var(--text-muted)",
+                fontSize: 12,
+              }}
+            >
+              No headings
+            </div>
+          )}
       </div>
       {activeFile && (
         <div
           style={{
             padding: "8px 12px",
-            borderTop: "1px solid var(--bg-hover)",
             color: "var(--text-muted)",
             fontSize: 11,
             display: "flex",
