@@ -11,6 +11,7 @@ interface FileContextMenuProps {
   x: number;
   y: number;
   onClose: () => void;
+  onRename: (node: FileNode) => void;
 }
 
 export function FileContextMenu({
@@ -19,6 +20,7 @@ export function FileContextMenu({
   x,
   y,
   onClose,
+  onRename,
 }: FileContextMenuProps) {
   const [inputMode, setInputMode] = useState<
     "newFile" | "newFolder" | "rename" | null
@@ -122,8 +124,8 @@ export function FileContextMenu({
       icon: Pencil,
       label: "Rename",
       action: () => {
-        setInputValue(node.name);
-        setInputMode("rename");
+        onRename(node);
+        onClose();
       },
     });
     if (!node.is_directory && (node.name.endsWith(".md") || node.name.endsWith(".markdown"))) {

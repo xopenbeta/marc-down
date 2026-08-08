@@ -115,7 +115,7 @@ export function Outline({ onFoldAll }: OutlineProps) {
             borderRadius: 8,
             border: "1px solid var(--bg-hover)",
             background: "var(--bg-panel)",
-            boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",flex: 1, minHeight: 0 }}>
+            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.06)",flex: 1, minHeight: 0 }}>
           {visibleHeadings.length > 0 ? (
             visibleHeadings.map((heading, idx) => (
               <OutlineItem
@@ -174,23 +174,27 @@ function OutlineIconButton({
       onClick={onClick}
       title={title}
       style={{
-        width: 28,
-        height: 28,
+        width: 24,
+        height: 24,
+        margin: 2,
         borderRadius: 4,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         color: "var(--text-muted)",
-        opacity: 0.5,
-        transition: "opacity 0.15s, color 0.15s",
+        opacity: 0.9,
+        background: "transparent",
+        transition: "background 0.15s",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.opacity = "1";
         e.currentTarget.style.color = "var(--text-primary)";
+        e.currentTarget.style.background = "var(--bg-hover)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.opacity = "0.5";
+        e.currentTarget.style.opacity = "0.9";
         e.currentTarget.style.color = "var(--text-muted)";
+        e.currentTarget.style.background = "transparent";
       }}
     >
       {children}

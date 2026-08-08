@@ -132,39 +132,22 @@ export function Editor() {
           justifyContent: "center",
           color: "var(--text-muted)",
           opacity: 0.9,
-          transition: "opacity 0.15s, color 0.15s, transform 0.2s, background-color 0.15s, box-shadow 0.15s",
+          transition: "opacity 0.15s, color 0.15s, transform 0.2s, background 0.15s",
           zIndex: 10,
-          borderRadius: "50%",
+          borderRadius: 4,
           border: "none",
           background: "transparent",
-          boxShadow: "none",
           cursor: "pointer",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = "1";
           e.currentTarget.style.color = "var(--text-primary)";
-          e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-          e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08)";
+          e.currentTarget.style.background = "var(--bg-hover)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "0.9";
           e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.backgroundColor = "transparent";
-          e.currentTarget.style.boxShadow = "none";
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-          e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08)";
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-          e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08)";
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.opacity = "0.9";
-          e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.backgroundColor = "transparent";
-          e.currentTarget.style.boxShadow = "none";
+          e.currentTarget.style.background = "transparent";
         }}
       >
         <ChevronRight size={16} style={{ transform: `rotate(${sidebarCollapsed ? 45 : 180}deg)` }} />
@@ -185,39 +168,22 @@ export function Editor() {
           justifyContent: "center",
           color: "var(--text-muted)",
           opacity: 0.9,
-          transition: "opacity 0.15s, color 0.15s, transform 0.2s, background-color 0.15s, box-shadow 0.15s",
+          transition: "opacity 0.15s, color 0.15s, transform 0.2s, background 0.15s",
           zIndex: 10,
-          borderRadius: "50%",
+          borderRadius: 4,
           border: "none",
           background: "transparent",
-          boxShadow: "none",
           cursor: "pointer",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = "1";
           e.currentTarget.style.color = "var(--text-primary)";
-          e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-          e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08)";
+          e.currentTarget.style.background = "var(--bg-hover)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "0.9";
           e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.backgroundColor = "transparent";
-          e.currentTarget.style.boxShadow = "none";
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-          e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08)";
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-          e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08)";
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.opacity = "0.9";
-          e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.backgroundColor = "transparent";
-          e.currentTarget.style.boxShadow = "none";
+          e.currentTarget.style.background = "transparent";
         }}
       >
         <ChevronRight size={16} style={{ transform: `rotate(${outlineCollapsed ? 135 : 0}deg)` }} />

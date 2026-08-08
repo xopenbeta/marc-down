@@ -58,6 +58,7 @@ export function FileTree({ node: initialNode }: FileTreeProps) {
   const [treeData, setTreeData] = useState<FileNode>(initialNode);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
 
   useMemo(() => {
     let root = initialNode;
@@ -98,6 +99,11 @@ export function FileTree({ node: initialNode }: FileTreeProps) {
     });
   }, []);
 
+  const handleStartRename = useCallback((node: FileNode) => {
+    setContextMenu(null);
+    setRenamingPath(node.path);
+  }, []);
+
   const handleContextMenu = useCallback((node: FileNode, x: number, y: number) => {
     const dirPath = node.is_directory
       ? node.path
@@ -126,8 +132,10 @@ export function FileTree({ node: initialNode }: FileTreeProps) {
           node={item.node}
           level={item.level}
           isCollapsed={item.node.is_directory && !expandedPaths.has(item.node.path)}
+          isRenaming={renamingPath === item.node.path}
           onToggleCollapse={toggleExpand}
           onContextMenu={handleContextMenu}
+          onFinishRename={() => setRenamingPath(null)}
         />
       ))}
       {contextMenu && (
@@ -137,6 +145,7 @@ export function FileTree({ node: initialNode }: FileTreeProps) {
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
+          onRename={handleStartRename}
         />
       )}
     </div>
