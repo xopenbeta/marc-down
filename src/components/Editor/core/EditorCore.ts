@@ -665,6 +665,35 @@ export class EditorCore {
     this.compositionLayer.appendChild(underline);
   }
 
+  private isWordChar(ch: string): boolean {
+    // Use Unicode categories so CJK and other non-ASCII letters behave like browser word selection.
+    return /[\p{L}\p{N}\p{M}_]/u.test(ch);
+  }
+
+  private getWordRangeAtPos(pos: number): { from: number; to: number } {
+    const text = this.doc.content;
+    const len = text.length;
+    if (len === 0) return { from: 0, to: 0 };
+
+    const clampedPos = Math.max(0, Math.min(pos, len));
+    let start = clampedPos;
+    let end = clampedPos;
+
+    if (clampedPos > 0 && this.isWordChar(text[clampedPos - 1])) {
+      start = clampedPos - 1;
+      end = clampedPos;
+    } else if (clampedPos < len && this.isWordChar(text[clampedPos])) {
+      start = clampedPos;
+      end = clampedPos + 1;
+    } else {
+      return { from: clampedPos, to: clampedPos };
+    }
+
+    while (start > 0 && this.isWordChar(text[start - 1])) start--;
+    while (end < len && this.isWordChar(text[end])) end++;
+    return { from: start, to: end };
+  }
+
   private handleMouseDown = (e: MouseEvent) => {
     e.preventDefault();
     const t = e.target as HTMLElement;
@@ -691,6 +720,13 @@ export class EditorCore {
 
     const pos = this.renderer.getDocumentPosIndexAtCoords(e.clientX, e.clientY);
     this.renderer.resetGoalColumn();
+
+    if (e.detail === 2 && !e.shiftKey) {
+      const { from, to } = this.getWordRangeAtPos(pos);
+      this.selection.setSelection(from, to);
+      this.input.focus();
+      return;
+    }
 
     if (e.shiftKey) {
       this.selection.setSelection(this.selection.anchor, pos);
