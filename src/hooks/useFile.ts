@@ -10,6 +10,7 @@ import {
 } from "@/atoms";
 import { editorViewStateCache } from "@/atoms/editorAtom";
 import * as tauriFs from "@/utils/tauriFs";
+import { recordFileOpen, recordFolderOpen } from "@/hooks/useFileHistory";
 import type { OpenFile } from "@/types";
 
 export function useFile() {
@@ -24,6 +25,9 @@ export function useFile() {
     const result = await tauriFs.openPathDialog();
     if (!result?.is_directory) return;
 
+    const name = result.path.substring(result.path.lastIndexOf("/") + 1) || result.path;
+    recordFolderOpen(result.path, name);
+
     setWorkspacePath(result.path);
     const tree = await tauriFs.readDirectoryTree(result.path);
     setFileTree(tree);
@@ -33,6 +37,8 @@ export function useFile() {
   const openWorkspace = async () => {
     const path = await tauriFs.openWorkspaceDialog();
     if (path) {
+      const name = path.substring(path.lastIndexOf("/") + 1) || path;
+      recordFolderOpen(path, name);
       setWorkspacePath(path);
       const tree = await tauriFs.readDirectoryTree(path);
       setFileTree(tree);
@@ -50,6 +56,7 @@ export function useFile() {
     const path = await tauriFs.openFileDialog();
     if (path) {
       const name = path.substring(path.lastIndexOf("/") + 1);
+      recordFileOpen(path, name);
       await openFile(path, name);
     }
   };
@@ -62,6 +69,7 @@ export function useFile() {
     }
 
     const fileName = name ?? path.split("/").pop() ?? path;
+    recordFileOpen(path, fileName);
     const content = await tauriFs.readFile(path);
     const newFile: OpenFile = { path, name: fileName, content, savedContent: content };
     setOpenFiles((prev) => [...prev, newFile]);
@@ -150,10 +158,20 @@ export function useFile() {
     await refreshTree();
   };
 
+  const openFolderPath = async (path: string) => {
+    const name = path.substring(path.lastIndexOf("/") + 1) || path;
+    recordFolderOpen(path, name);
+    setWorkspacePath(path);
+    const tree = await tauriFs.readDirectoryTree(path);
+    setFileTree(tree);
+    setSidebarCollapsed(false);
+  };
+
   return {
     workspacePath,
     openPath,
     openWorkspace,
+    openFolderPath,
     openFileDialog,
     refreshTree,
     openFile,

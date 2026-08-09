@@ -1,6 +1,6 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, FileText, X } from "lucide-react";
 import {
   activeFileAtom,
   isSidebarCollapsedAtom,
@@ -22,6 +22,7 @@ import { useAppTitle } from "@/hooks/useAppTitle";
 import { usePanelLayout } from "@/hooks/usePanelLayout";
 import { useEditorSearch } from "@/hooks/useEditorSearch";
 import { useEditorPadding } from "@/hooks/useEditorPadding";
+import { useFileHistory } from "@/hooks/useFileHistory";
 
 export function Editor() {
   const activeFile = useAtomValue(activeFileAtom);
@@ -31,7 +32,8 @@ export function Editor() {
   const setSidebarCollapsed = useSetAtom(isSidebarCollapsedAtom);
   const setOutlineCollapsed = useSetAtom(isOutlineCollapsedAtom);
   const { handleOutlineResize } = usePanelLayout();
-  const { updateFileContent, openFileDialog } = useFile();
+  const { updateFileContent, openFileDialog, openFile } = useFile();
+  const { fileHistory, removeFile } = useFileHistory();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorCore | null>(null);
   const { padding, edgeSize } = useEditorPadding(editorRef);
@@ -238,27 +240,119 @@ export function Editor() {
             alignItems: "center",
             justifyContent: "center",
             flexDirection: "column",
-            gap: 12,
+            gap: 24,
             color: "var(--text-secondary)",
+            overflow: "auto",
+            padding: "40px 20px",
           }}
         >
-          <p style={{ fontSize: 13 }}>
-            {"Open a file to start editing"}
-          </p>
-          <button
-            onClick={openFileDialog}
-            style={{
-              padding: "6px 16px",
-              background: "var(--text-primary)",
-              color: "var(--bg-primary)",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 500,
-            }}
-          >
-            Open
-          </button>
+          {/* ── Open File section ── */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", maxWidth: 360 }}>
+            <button
+              onClick={openFileDialog}
+              style={{
+                padding: "7px 20px",
+                background: "var(--text-primary)",
+                color: "var(--bg-primary)",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: "pointer",
+                border: "none",
+              }}
+            >
+              Open File
+            </button>
+            {fileHistory.length > 0 && (
+              <div style={{ width: "100%" }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, paddingLeft: 2 }}>
+                  Recent files
+                </div>
+                {fileHistory.map((item) => (
+                  <HistoryRow
+                    key={item.path}
+                    icon={<FileText size={13} />}
+                    name={item.name}
+                    path={item.path}
+                    onClick={() => openFile(item.path, item.name)}
+                    onRemove={() => removeFile(item.path)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
+      )}
+    </div>
+  );
+}
+
+function HistoryRow({
+  icon,
+  name,
+  path,
+  onClick,
+  onRemove,
+}: {
+  icon: React.ReactNode;
+  name: string;
+  path: string;
+  onClick: () => void;
+  onRemove: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      onClick={onClick}
+      title={path}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "5px 8px",
+        borderRadius: 4,
+        cursor: "pointer",
+        fontSize: 12,
+        color: "var(--text-secondary)",
+        background: hovered ? "var(--bg-hover)" : "transparent",
+        transition: "background 0.1s",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span style={{ display: "flex", alignItems: "center", flexShrink: 0, color: "var(--text-muted)" }}>
+        {icon}
+      </span>
+      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {name}
+      </span>
+      {hovered && (
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          title="Remove from history"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+            padding: 2,
+            borderRadius: 3,
+            color: "var(--text-muted)",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+          }}
+        >
+          <X size={12} />
+        </span>
       )}
     </div>
   );
