@@ -142,12 +142,10 @@ export function Editor() {
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = "1";
           e.currentTarget.style.color = "var(--text-primary)";
-          e.currentTarget.style.background = "var(--bg-hover)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "0.9";
           e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.background = "transparent";
         }}
       >
         <ChevronRight size={16} style={{ transform: `rotate(${sidebarCollapsed ? 45 : 180}deg)` }} />
@@ -178,12 +176,10 @@ export function Editor() {
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = "1";
           e.currentTarget.style.color = "var(--text-primary)";
-          e.currentTarget.style.background = "var(--bg-hover)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "0.9";
           e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.background = "transparent";
         }}
       >
         <ChevronRight size={16} style={{ transform: `rotate(${outlineCollapsed ? 135 : 0}deg)` }} />
