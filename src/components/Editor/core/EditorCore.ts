@@ -240,12 +240,24 @@ export class EditorCore {
     this.render("setDebugGlyphOverlay");
   }
 
-  scrollToBlock(blockId: number) {
+  scrollToBlock(paragraphNumber: number) {
     const blocks = this.renderer.getBlocks();
     if (blocks.length === 0) return;
-    const index = Math.max(0, Math.min(blockId, blocks.length - 1));
-    this.selection.setSelection(blocks[index].documentPosFrom);
-    this.scroller.scrollIntoView(blocks[index].y! + this.paddingTop);
+
+    // paragraphNumber is a 1-based line number from mdast.
+    // Convert to the document position for that paragraph, then find the
+    // block containing it so we jump to the heading block itself, not the next one.
+    const paraIndex = Math.max(0, paragraphNumber - 1);
+    if (paraIndex >= this.doc.paraphsLength) return;
+
+    const targetPos = this.doc.getParagraph(paraIndex).documentPosFrom;
+    const block = blocks.find(
+      (b) => b.documentPosFrom <= targetPos && targetPos <= b.documentPosTo,
+    );
+    if (!block) return;
+
+    this.selection.setSelection(block.documentPosFrom);
+    this.scroller.scrollIntoView(block.y! + this.paddingTop);
     this.updateCursorVisual();
     this.input.focus();
   }
@@ -695,6 +707,10 @@ export class EditorCore {
   }
 
   private handleMouseDown = (e: MouseEvent) => {
+    // Only primary button (left-click) should affect selection.
+    // Right-click preserves the existing selection for the context menu.
+    if (e.button !== 0) return;
+
     e.preventDefault();
     const t = e.target as HTMLElement;
 

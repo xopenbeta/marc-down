@@ -36,7 +36,7 @@ export function Editor() {
   const { fileHistory, removeFile } = useFileHistory();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorCore | null>(null);
-  const { padding, edgeSize } = useEditorPadding(editorRef);
+  const { padding } = useEditorPadding(editorRef);
   const {
     searchVisible,
     handleSearchClose,
@@ -127,8 +127,9 @@ export function Editor() {
           position: "absolute",
           top: 0,
           left: sidebarCollapsed ? 1 : -2,
-          width: edgeSize,
-          height: edgeSize,
+          width: 24,
+          height: 24,
+          margin: 2,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -136,7 +137,7 @@ export function Editor() {
           opacity: 0.9,
           transition: "opacity 0.15s, color 0.15s, transform 0.2s, background 0.15s",
           zIndex: 10,
-          borderRadius: 4,
+          borderRadius: 8,
           border: "none",
           background: "transparent",
           cursor: "pointer",
@@ -144,10 +145,12 @@ export function Editor() {
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = "1";
           e.currentTarget.style.color = "var(--text-primary)";
+        e.currentTarget.style.background = "var(--bg-hover)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "0.9";
           e.currentTarget.style.color = "var(--text-muted)";
+        e.currentTarget.style.background = "transparent";
         }}
       >
         <ChevronRight size={16} style={{ transform: `rotate(${sidebarCollapsed ? 45 : 180}deg)` }} />
@@ -161,8 +164,9 @@ export function Editor() {
           position: "absolute",
           top: 0,
           right: outlineCollapsed ? 1 : outlineWidth - 2,
-          width: edgeSize,
-          height: edgeSize,
+          width: 24,
+          height: 24,
+          margin: 2,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -170,7 +174,7 @@ export function Editor() {
           opacity: 0.9,
           transition: "opacity 0.15s, color 0.15s, transform 0.2s, background 0.15s",
           zIndex: 10,
-          borderRadius: 4,
+          borderRadius: 8,
           border: "none",
           background: "transparent",
           cursor: "pointer",
@@ -178,10 +182,12 @@ export function Editor() {
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = "1";
           e.currentTarget.style.color = "var(--text-primary)";
+        e.currentTarget.style.background = "var(--bg-hover)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "0.9";
           e.currentTarget.style.color = "var(--text-muted)";
+        e.currentTarget.style.background = "transparent";
         }}
       >
         <ChevronRight size={16} style={{ transform: `rotate(${outlineCollapsed ? 135 : 0}deg)` }} />

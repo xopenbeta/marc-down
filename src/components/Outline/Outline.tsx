@@ -111,7 +111,7 @@ export function Outline({ onFoldAll }: OutlineProps) {
       <div style={{ 
             height: "100%",
             overflow: "auto",
-            paddingTop: 8,
+            paddingTop: 4,
             borderRadius: 8,
             border: "1px solid var(--bg-hover)",
             background: "var(--bg-panel)",
@@ -177,7 +177,7 @@ function OutlineIconButton({
         width: 24,
         height: 24,
         margin: 2,
-        borderRadius: 4,
+        borderRadius: 8,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
