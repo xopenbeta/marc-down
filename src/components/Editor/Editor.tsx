@@ -275,6 +275,16 @@ export function Editor() {
             padding: "40px 20px",
           }}
         >
+          <div
+            style={{
+              fontSize: 72,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              letterSpacing: "-0.5px",
+            }}
+          >
+            MarcDown
+          </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", maxWidth: 360 }}>
             <div style={{ width: "100%" }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, paddingLeft: 2 }}>
