@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronRight, FileText, X } from "lucide-react";
+import { ChevronRight, FileInput, FilePlus, FileText, X } from "lucide-react";
 import {
   activeFileAtom,
   isSidebarCollapsedAtom,
@@ -8,6 +8,7 @@ import {
   outlineWidthAtom,
   settingsAtom,
 } from "@/atoms";
+import * as tauriFs from "@/utils/tauriFs";
 import { editorViewStateCache } from "@/atoms/editorAtom";
 import { EditorCore } from "./core/EditorCore";
 import { SearchMatch, SearchPanel } from "./core/SearchPanel";
@@ -32,7 +33,7 @@ export function Editor() {
   const setSidebarCollapsed = useSetAtom(isSidebarCollapsedAtom);
   const setOutlineCollapsed = useSetAtom(isOutlineCollapsedAtom);
   const { handleOutlineResize } = usePanelLayout();
-  const { updateFileContent, openFileDialog, openFile } = useFile();
+  const { updateFileContent, openFileDialog, openFile, createFile, workspacePath, openFolderPath } = useFile();
   const { fileHistory, removeFile } = useFileHistory();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorCore | null>(null);
@@ -106,6 +107,28 @@ export function Editor() {
     editorRef.current?.setDebugUnderline(settings.debugUnderline);
     editorRef.current?.setDebugGlyphOverlay(settings.debugGlyphOverlay);
   }, [settings.showSpaceDots, settings.debugTopLabels, settings.debugHeightPanel, settings.debugBackground, settings.debugUnderline, settings.debugGlyphOverlay]);
+
+  const handleCreateNewFile = useCallback(async () => {
+    let dir = workspacePath;
+    if (!dir) {
+      const selected = await tauriFs.openWorkspaceDialog();
+      if (!selected) return;
+      dir = selected;
+      await openFolderPath(selected);
+    }
+
+    const input = window.prompt("Create new file", "untitled.md");
+    const rawName = input?.trim();
+    if (!rawName) return;
+
+    const name = rawName.endsWith(".md") || rawName.endsWith(".markdown")
+      ? rawName
+      : `${rawName}.md`;
+
+    const fullPath = `${dir}/${name}`;
+    await createFile(dir, name);
+    await openFile(fullPath, name);
+  }, [createFile, openFile, openFolderPath, workspacePath]);
 
   return (
     <div
@@ -252,23 +275,26 @@ export function Editor() {
             padding: "40px 20px",
           }}
         >
-          {/* ── Open File section ── */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", maxWidth: 360 }}>
-            <button
-              onClick={openFileDialog}
-              style={{
-                padding: "7px 20px",
-                background: "var(--text-primary)",
-                color: "var(--bg-primary)",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: "pointer",
-                border: "none",
-              }}
-            >
-              Open File
-            </button>
+            <div style={{ width: "100%" }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, paddingLeft: 2 }}>
+                Operations
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <HistoryRow
+                  icon={<FileInput size={13} />}
+                  name="Open File"
+                  path="Open a markdown file from disk"
+                  onClick={openFileDialog}
+                />
+                <HistoryRow
+                  icon={<FilePlus size={13} />}
+                  name="Create New File"
+                  path="Create a new markdown file in the workspace"
+                  onClick={handleCreateNewFile}
+                />
+              </div>
+            </div>
             {fileHistory.length > 0 && (
               <div style={{ width: "100%" }}>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, paddingLeft: 2 }}>
@@ -305,7 +331,7 @@ function HistoryRow({
   name: string;
   path: string;
   onClick: () => void;
-  onRemove: () => void;
+  onRemove?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -334,7 +360,7 @@ function HistoryRow({
       <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {name}
       </span>
-      {hovered && (
+      {onRemove && hovered && (
         <span
           onClick={(e) => {
             e.stopPropagation();
@@ -357,7 +383,7 @@ function HistoryRow({
             e.currentTarget.style.background = "transparent";
           }}
         >
-          <X size={12} />
+          <X size={10} />
         </span>
       )}
     </div>

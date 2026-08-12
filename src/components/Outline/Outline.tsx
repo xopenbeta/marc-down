@@ -4,14 +4,12 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   Download,
-  FolderOpen,
+  ListTree,
   Settings,
-  User,
 } from "lucide-react";
 import { activeFileAtom, outlineAtom, showExportDialogAtom } from "@/atoms";
-import { useFile } from "@/hooks/useFile";
 import { OutlineItem } from "./OutlineItem";
-import { SettingsDialog } from "../Settings/SettingsDialog";
+import { SettingsList } from "../Settings/SettingsList";
 import type { HeadingItem } from "@/types";
 
 interface OutlineProps {
@@ -22,12 +20,11 @@ export function Outline({ onFoldAll }: OutlineProps) {
   const activeFile = useAtomValue(activeFileAtom);
   const headings = useAtomValue(outlineAtom);
   const setShowExport = useSetAtom(showExportDialogAtom);
-  const { openPath } = useFile();
   const [collapsedItems, setCollapsedItems] = useState<Set<number>>(
     new Set()
   );
   const [blocksFolded, setBlocksFolded] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [panelView, setPanelView] = useState<"outline" | "settings">("outline");
 
   const toggleItem = (paragraph: number) => {
     setCollapsedItems((prev) => {
@@ -81,29 +78,37 @@ export function Outline({ onFoldAll }: OutlineProps) {
           padding: "0px 4px 0",
         }}
       >
+        {panelView === "outline" && (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <OutlineIconButton
+              onClick={toggleFoldAllBlocks}
+              title={blocksFolded ? "展开所有源码块" : "折叠所有源码块"}
+              active={blocksFolded}
+            >
+              {blocksFolded ? (
+                <ChevronsUpDown size={14} />
+              ) : (
+                <ChevronsDownUp size={14} />
+              )}
+            </OutlineIconButton>
+            <OutlineIconButton onClick={() => setShowExport(true)} title="导出">
+              <Download size={14} />
+            </OutlineIconButton>
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center" }}>
           <OutlineIconButton
-            onClick={toggleFoldAllBlocks}
-            title={blocksFolded ? "展开所有源码块" : "折叠所有源码块"}
+            onClick={() => setPanelView("outline")}
+            title="大纲"
+            active={panelView === "outline"}
           >
-            {blocksFolded ? (
-              <ChevronsUpDown size={14} />
-            ) : (
-              <ChevronsDownUp size={14} />
-            )}
+            <ListTree size={14} />
           </OutlineIconButton>
-          <OutlineIconButton onClick={() => setShowExport(true)} title="导出">
-            <Download size={14} />
-          </OutlineIconButton>
-        </div>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <OutlineIconButton onClick={openPath} title="打开">
-            <FolderOpen size={14} />
-          </OutlineIconButton>
-          <OutlineIconButton onClick={() => setShowSettings(true)} title="设置">
-            <User size={14} />
-          </OutlineIconButton>
-          <OutlineIconButton onClick={() => setShowSettings(true)} title="设置">
+          <OutlineIconButton
+            onClick={() => setPanelView("settings")}
+            title="设置"
+            active={panelView === "settings"}
+          >
             <Settings size={14} />
           </OutlineIconButton>
         </div>
@@ -116,29 +121,33 @@ export function Outline({ onFoldAll }: OutlineProps) {
             border: "1px solid var(--bg-hover)",
             background: "var(--bg-panel)",
             boxShadow: "0 1px 2px rgba(0, 0, 0, 0.06)",flex: 1, minHeight: 0 }}>
-          {visibleHeadings.length > 0 ? (
-            visibleHeadings.map((heading, idx) => (
-              <OutlineItem
-                key={`${heading.paragraph}-${idx}`}
-                heading={heading}
-                isCollapsed={collapsedItems.has(heading.paragraph)}
-                onToggleCollapse={toggleItem}
-              />
-            ))
+          {panelView === "outline" ? (
+            visibleHeadings.length > 0 ? (
+              visibleHeadings.map((heading, idx) => (
+                <OutlineItem
+                  key={`${heading.paragraph}-${idx}`}
+                  heading={heading}
+                  isCollapsed={collapsedItems.has(heading.paragraph)}
+                  onToggleCollapse={toggleItem}
+                />
+              ))
+            ) : (
+              <div
+                style={{
+                  padding: "40px 20px",
+                  textAlign: "center",
+                  color: "var(--text-muted)",
+                  fontSize: 12,
+                }}
+              >
+                No headings
+              </div>
+            )
           ) : (
-            <div
-              style={{
-                padding: "40px 20px",
-                textAlign: "center",
-                color: "var(--text-muted)",
-                fontSize: 12,
-              }}
-            >
-              No headings
-            </div>
+            <SettingsList />
           )}
       </div>
-      {activeFile && (
+      {activeFile && panelView === "outline" && (
         <div
           style={{
             padding: "8px 12px",
@@ -153,9 +162,6 @@ export function Outline({ onFoldAll }: OutlineProps) {
           <span>{activeFile.content.split("\n").length} 行</span>
         </div>
       )}
-      {showSettings && (
-        <SettingsDialog onClose={() => setShowSettings(false)} />
-      )}
     </div>
   );
 }
@@ -163,10 +169,12 @@ export function Outline({ onFoldAll }: OutlineProps) {
 function OutlineIconButton({
   onClick,
   title,
+  active = false,
   children,
 }: {
   onClick: () => void;
   title: string;
+  active?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -181,9 +189,9 @@ function OutlineIconButton({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "var(--text-muted)",
-        opacity: 0.9,
-        background: "transparent",
+        color: active ? "var(--text-primary)" : "var(--text-muted)",
+        opacity: active ? 1 : 0.9,
+        background: active ? "var(--bg-hover)" : "transparent",
         transition: "background 0.15s",
       }}
       onMouseEnter={(e) => {
@@ -192,6 +200,7 @@ function OutlineIconButton({
         e.currentTarget.style.background = "var(--bg-hover)";
       }}
       onMouseLeave={(e) => {
+        if (active) return;
         e.currentTarget.style.opacity = "0.9";
         e.currentTarget.style.color = "var(--text-muted)";
         e.currentTarget.style.background = "transparent";
