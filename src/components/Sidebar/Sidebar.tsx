@@ -45,37 +45,26 @@ export function Sidebar() {
             <div
               style={{
                 padding: "40px 20px",
-                textAlign: "center",
                 color: "var(--text-secondary)",
               }}
             >
-              <p style={{ fontSize: 12, marginBottom: 12 }}>
-                Open a folder to get started
-              </p>
-              <button
+              <FolderHistoryRow
+                icon={<FolderOpen size={13} />}
+                name="Open Folder"
+                path="Open a folder to get started"
                 onClick={openPath}
-                style={{
-                  padding: "6px 16px",
-                  background: "var(--text-primary)",
-                  color: "var(--bg-primary)",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  border: "none",
-                }}
-              >
-                Open
-              </button>
+              />
               {folderHistory.length > 0 && (
-                <div style={{ textAlign: "left", marginTop: 20 }}>
+                <div style={{ marginTop: 6 }}>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, paddingLeft: 2 }}>
                     Recent folders
                   </div>
                   {folderHistory.map((item) => (
                     <FolderHistoryRow
                       key={item.path}
-                      item={item}
+                      icon={<FolderOpen size={13} />}
+                      name={item.name}
+                      path={item.path}
                       onClick={() => openFolderPath(item.path)}
                       onRemove={() => removeFolder(item.path)}
                     />
@@ -91,20 +80,24 @@ export function Sidebar() {
 }
 
 function FolderHistoryRow({
-  item,
+  icon,
+  name,
+  path,
   onClick,
   onRemove,
 }: {
-  item: { path: string; name: string };
+  icon: React.ReactNode;
+  name: string;
+  path: string;
   onClick: () => void;
-  onRemove: () => void;
+  onRemove?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
   return (
     <div
       onClick={onClick}
-      title={item.path}
+      title={path}
       style={{
         display: "flex",
         alignItems: "center",
@@ -121,12 +114,12 @@ function FolderHistoryRow({
       onMouseLeave={() => setHovered(false)}
     >
       <span style={{ display: "flex", alignItems: "center", flexShrink: 0, color: "var(--text-muted)" }}>
-        <FolderOpen size={13} />
+        {icon}
       </span>
       <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {item.name}
+        {name}
       </span>
-      {hovered && (
+      {onRemove && hovered && (
         <span
           onClick={(e) => {
             e.stopPropagation();
@@ -149,7 +142,7 @@ function FolderHistoryRow({
             e.currentTarget.style.background = "transparent";
           }}
         >
-          <X size={12} />
+          <X size={10} />
         </span>
       )}
     </div>
